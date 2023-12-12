@@ -9,7 +9,7 @@ Parallel and fast quering selected APIs.<br>
 Providing reproducible results by setting contraints.<br>
 Allowing testing wheter a user defined API following a TRAPI standard. <br>
 Faciliting to explore knowledge graphs from both Translator ecosystem and user defined APIs.<br>
-** Connecting large language models to convert user's questions into TRAPI queries. <br>
+Connecting large language models to convert user's questions into TRAPI queries. <br>
 
 ## Three utilities
 #### Connection finder
@@ -17,3 +17,7 @@ Faciliting to explore knowledge graphs from both Translator ecosystem and user d
 #### Path finder
 
 #### Network finder
+
+
+## Contact info
+Guangrong Qin, gqin@isbscience.org
