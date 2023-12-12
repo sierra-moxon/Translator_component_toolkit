@@ -13,11 +13,14 @@ Connecting large language models to convert user's questions into TRAPI queries.
 
 ## Three utilities
 #### Connection finder
+Example notebook for **[connection finder](./notebooks/Connecting_userAPI.ipynb)**
 
 #### Path finder
 
 #### Network finder
 
+## Requirements
+Please follow the **[requirements](./requirements.md)** to be able to run all the notebooks.  
 
 ## Contact info
 Guangrong Qin, gqin@isbscience.org
