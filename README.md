@@ -27,6 +27,7 @@ Example notebook for **[Network finder](./notebooks/Network_finder.ipynb)**
 #### Connecting to a user's API
 API should be developed following the standard from [TRAPI](https://github.com/NCATSTranslator/ReasonerAPI). 
 An example notebook for add a user's API can be find [here](./notebooks/Connecting_userAPI.ipynb)
+**Warning: It does not work if no user' API is established**
 
 ## Requirements
 Please follow the **[requirements](./requirements.md)** to be able to run all the notebooks.  
