@@ -16,6 +16,7 @@ Connecting large language models to convert user's questions into TRAPI queries.
 Example notebook for **[connection finder](./notebooks/Connecting_userAPI.ipynb)**
 
 #### Path finder
+Example notebook for **[Path finder](./notebooks/Path_finder.ipynb)**
 
 #### Network finder
 
