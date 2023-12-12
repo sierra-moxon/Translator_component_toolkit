@@ -19,6 +19,7 @@ Example notebook for **[connection finder](./notebooks/Connecting_userAPI.ipynb)
 Example notebook for **[Path finder](./notebooks/Path_finder.ipynb)**
 
 #### Network finder
+Example notebook for **[Network finder](./notebooks/Network_finder.ipynb)**
 
 ## Requirements
 Please follow the **[requirements](./requirements.md)** to be able to run all the notebooks.  
