@@ -11,6 +11,9 @@ Allowing testing wheter a user defined API following a TRAPI standard. <br>
 Faciliting to explore knowledge graphs from both Translator ecosystem and user defined APIs.<br>
 Connecting large language models to convert user's questions into TRAPI queries. <br>
 
+## How to use TCT
+Please follow the example notebooks below to explore the Translator knowledge providers.
+
 ## Three utilities
 #### Connection finder
 Example notebook for **[connection finder](./notebooks/Connecting_userAPI.ipynb)**
