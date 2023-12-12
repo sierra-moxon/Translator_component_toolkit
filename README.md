@@ -5,9 +5,9 @@ Translator Component Toolkit is a python library and related jupyter notebooks a
 
 ## Key features for TCT
 Allowing users to select APIs, predicates according to the user's intention. <br>
-Parallel and fast quering selected APIs.<br>
+Parallel and fast quering of the selected APIs.<br>
 Providing reproducible results by setting contraints.<br>
-Allowing testing wheter a user defined API following a TRAPI standard. <br>
+Allowing testing whether a user defined API follows a [TRAPI](https://github.com/NCATSTranslator/ReasonerAPI) standard or not. <br>
 Faciliting to explore knowledge graphs from both Translator ecosystem and user defined APIs.<br>
 Connecting large language models to convert user's questions into TRAPI queries. <br>
 
