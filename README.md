@@ -16,13 +16,13 @@ Please follow the example notebooks below to explore the Translator knowledge pr
 
 ## Three utilities
 #### Connection finder
-Example notebook for **[connection finder](./notebooks/Connecting_userAPI.ipynb)**
+Example notebook for **[ConnectionFinder](./notebooks/Connecting_userAPI.ipynb)**
 
 #### Path finder
-Example notebook for **[Path finder](./notebooks/Path_finder.ipynb)**
+Example notebook for **[PathFinder](./notebooks/Path_finder.ipynb)**
 
 #### Network finder
-Example notebook for **[Network finder](./notebooks/Network_finder.ipynb)**
+Example notebook for **[NetworkFinder](./notebooks/Network_finder.ipynb)**
 
 #### Translate users' questions into TRAPI queries
 Example notebook for translating users' questions into TRAPI queries can be found [here](./notebooks/Question2Query_chatGPT.ipynb). 

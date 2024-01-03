@@ -9,6 +9,9 @@ import numpy as np
 import openai
 
 
+def TCT_help(func):
+    print(func.__doc__)
+
 # used Dec 5, 2023 (Example_query_one_hop_with_category.ipynb)
 def list_Translator_APIs():
     APInames = {
@@ -239,7 +242,6 @@ def select_predicates_inKP(sub_list,obj_list,KPname,metaKG):
     return(final_set)
 
     
-
 # used. Dec 5, 2023  (Example_query_one_hop_with_category.ipynb)
 def Gene_id_converter(id_list, API_url):
     id_list_new = []
@@ -282,6 +284,8 @@ def Gene_id_converter(id_list, API_url):
         result = response.json()
 
     return(result)
+
+
 
 # used. Dec 5, 2023 (Example_query_one_hop_with_category.ipynb)
 def format_query_json(subject_ids, object_ids, subject_categories, object_categories, predicates):
@@ -347,13 +351,17 @@ def query_KP(remoteURL, query_json):
             #print(result) # revised Dec 1, 2023
             if "knowledge_graph" in result:
                 #return(result['knowledge_graph'])
-                return(result)  
+                print("Success!" + remoteURL)
+                return(result)
+                
             else:
+                print("Warning:" + remoteURL + "no knowledge_graph in response.")
                 return()
         else:
+            print("Warning:" + remoteURL + "no message in response.")
             return()
     else:
-        print("Error: " + str(response.status_code))
+        print("Warning Code:" + str(response.status_code) + ":" +remoteURL  )
         return()
     
 # used. Dec 5, 2023 (Example_query_one_hop_with_category.ipynb)
@@ -1002,7 +1010,6 @@ def ranking_result_by_predicates_subject(Temp_result_df):
 
     sorted_dic = sorted(dic_rank.items(), key=lambda x: x[1], reverse=True)
     return(sorted_dic)
-
 
 
 # to be removed
