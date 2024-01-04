@@ -13,6 +13,7 @@ Connecting large language models to convert user's questions into TRAPI queries.
 
 ## How to use TCT
 ### Install Requirments
+Please follow the **[requirements](./requirements.txt)** to be able to run all the notebooks.  
 pip install -r requirements.txt
 
 ### Please follow the example notebooks (three utilities) below to explore the Translator APIs.
@@ -33,9 +34,6 @@ Example notebook for translating users' questions into TRAPI queries can be foun
 API should be developed following the standard from [TRAPI](https://github.com/NCATSTranslator/ReasonerAPI). <br>
 An example notebook for add a user's API can be find [here](./notebooks/Connecting_userAPI.ipynb).<br>
 **Warning: It does not work if no user' API is established**<br>
-
-## Requirements
-Please follow the **[requirements](./requirements.md)** to be able to run all the notebooks.  
 
 ## Contributing
 TCT is a tool that helps to explore knowledge graphs developed in the Biomedical Data Translator Consortium. Consortium members and external contributors are encouraged to submit issues and pull requests. 
