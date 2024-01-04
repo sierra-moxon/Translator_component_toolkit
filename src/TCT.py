@@ -242,6 +242,15 @@ def select_predicates_inKP(sub_list,obj_list,KPname,metaKG):
     return(final_set)
 
     
+def Generate_Gene_id_map():
+    id_file = open("../metaData/Homo_sapiens.gene_info", "r")
+    Gene_id_map = {}
+    for line in id_file:
+        line = line.strip()
+        Gene_id_map["NCBIGene:"+line.split("\t")[1]] = line.split("\t")[2]
+    id_file.close()
+    return(Gene_id_map)
+
 # used. Dec 5, 2023  (Example_query_one_hop_with_category.ipynb)
 def Gene_id_converter(id_list, API_url):
     id_list_new = []
@@ -634,8 +643,8 @@ def visulization_one_hop_ranking(result_ranked_by_primary_infores,result_parsed 
         if 'NCBIGene' in item:
             convert = True
     if convert:
-        Gene_id_map = Gene_id_converter(colnames, "http://127.0.0.1:8000/query_name_by_id")
-    
+        #Gene_id_map = Gene_id_converter(colnames, "http://127.0.0.1:8000/query_name_by_id")
+        Gene_id_map = Generate_Gene_id_map()
         new_colnames = []
         for item in colnames:
             if item in Gene_id_map.keys():
@@ -713,7 +722,9 @@ def merge_by_ranking_index(result_ranked_by_primary_infores,result_ranked_by_pri
         if 'NCBIGene' in item:
             convert = True
     if convert:
-        Gene_id_map = Gene_id_converter(colnames, "http://127.0.0.1:8000/query_name_by_id")
+        #Gene_id_map = Gene_id_converter(colnames, "http://127.0.0.1:8000/query_name_by_id")
+        Gene_id_map = Generate_Gene_id_map()
+        print(Gene_id_map)
             
         new_colnames = []
         for item in colnames:
@@ -767,8 +778,8 @@ def merge_ranking_by_number_of_infores(result_ranked_by_primary_infores, result_
             convert = True
     print(convert)
     if convert:
-        Gene_id_map = Gene_id_converter(colnames, "http://127.0.0.1:8000/query_name_by_id")
-        
+        #Gene_id_map = Gene_id_converter(colnames, "http://127.0.0.1:8000/query_name_by_id")
+        Gene_id_map = Generate_Gene_id_map()
         new_colnames = []
         for item in colnames:
             if item in Gene_id_map.keys():
