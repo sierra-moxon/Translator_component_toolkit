@@ -12,9 +12,11 @@ Faciliting to explore knowledge graphs from both Translator ecosystem and user d
 Connecting large language models to convert user's questions into TRAPI queries. <br>
 
 ## How to use TCT
-Please follow the example notebooks below to explore the Translator knowledge providers.
+### Install Requirments
+pip install -r requirements.txt
 
-## Three utilities
+### Please follow the example notebooks (three utilities) below to explore the Translator APIs.
+
 #### Connection finder
 Example notebook for **[ConnectionFinder](./notebooks/Connecting_userAPI.ipynb)**
 
