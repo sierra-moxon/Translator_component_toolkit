@@ -13,7 +13,7 @@ Connecting large language models to convert user's questions into TRAPI queries.
 
 ## How to use TCT
 ### Install Requirments
-Please follow the **[requirements](./requirements.txt)** to be able to run all the notebooks.  
+Follow the **[requirements](./requirements.txt)** to be able to run all the notebooks.  
 pip install -r requirements.txt
 
 ### Please follow the example notebooks (three utilities) below to explore the Translator APIs.
