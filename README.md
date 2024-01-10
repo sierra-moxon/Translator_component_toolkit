@@ -19,7 +19,7 @@ pip install -r requirements.txt
 ### Please follow the example notebooks (three utilities) below to explore the Translator APIs.
 
 #### Connection finder
-Example notebook for **[ConnectionFinder](./notebooks/Connecting_userAPI.ipynb)**
+Example notebook for **[ConnectionFinder](./notebooks/Connection_finder.ipynb)**
 
 #### Path finder
 Example notebook for **[PathFinder](./notebooks/Path_finder.ipynb)**
