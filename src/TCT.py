@@ -12,9 +12,51 @@ import openai
 def TCT_help(func):
     print(func.__doc__)
 
+# used. Jan 5, 2024
+def get_Translator_APIs():
+    Translator_APIs = []
+    Translator_apps_url = "https://smart-api.info/api/query?q=tags.name:translator&fields=info,_meta,tags&meta=1&size=500"
+    Translator_apps = requests.get(Translator_apps_url).json()['hits']
+    for app in Translator_apps:
+        Translator_APIs.append(app['info']['title'])
+    return Translator_APIs
+
 # used Dec 5, 2023 (Example_query_one_hop_with_category.ipynb)
 def list_Translator_APIs():
     APInames = {
+        'Automat-ctd(Trapi v1.4.0)':"",
+        'Automat-sri-reference-kg(Trapi v1.4.0)':"",
+        'Autonomous Relay System (ARS) TRAPI':"",
+        'BioLink API':"",
+        'BioThings AGR API':"",
+        'BioThings BioPlanet Pathway-Gene API':"",
+        'BioThings DDInter API':"",
+        'BioThings Explorer (BTE) TRAPI':"",
+        'BioThings FooDB API':"",
+        'BioThings FoodData Central API':"",
+        'BioThings GO Biological Process API':"",
+        'BioThings InnateDB API':"", # not in TRAPI standard
+        'BioThings RARe-SOURCE API':"",
+        'BioThings repoDB API':"",
+        'Biolink Lookup':"",
+        'Biothings Therapeutic Target Database API':"",
+        'COHD TRAPI':"https://cohd-api.transltr.io/api/query",
+        'Complex Portal Web Service':"",
+        'Curated Query Service':"",
+        'EBI Proteins API':"",
+        'Gene-List Network Enrichment Analysis':"",
+        'Knowledge Collaboratory API':"",
+        'LitVar API':"",
+        'RaMP API v1.0.1':"",
+        'SmartAPI API':"",
+        'Sri-answer-appraiser(Trapi v1.4.0)':"",
+        'Sri-name-resolver':"",
+        'Sri-node-normalizer(Trapi v1.3.0)':"",
+        'Sri-node-normalizer(Trapi v1.4.0)':"",
+        'Translator Annotation Service':"",
+        'Workflow-runner(Trapi v1.4.0)':"",
+        'imProving Agent for TRAPI 1.4':"",
+        #'mediKanren':'https://medikanren-trapi.transltr.io/query', #ARA
         #"BigGIM_BMG":"http://127.0.0.1:8000/find_path_by_predicate",
         "Aragorn(Trapi v1.4.0)":"https://aragorn.transltr.io/aragorn/query",
         #"ARAX Translator Reasoner - TRAPI 1.4.0":"https://arax.transltr.io/api/arax/v1.4/asyncquery",
@@ -66,7 +108,7 @@ def list_Translator_APIs():
         "PharmGKB REST API":"https://api.bte.ncats.io/v1/bde72db681ec0b8f9eeb67bb6b8dd72c/query", #need to check with chunlei/Andrew
         "QuickGO API":"https://api.bte.ncats.io/v1/1f277e1563fcfd124bfae2cc3c4bcdec/query",#pathways
         #"RaMP API v1.0.1":"",
-        #"Text Mining Targeted Association API":"",
+        "Text Mining Targeted Association API":"https://api.bte.ncats.io/v1/smartapi/978fe380a147a8641caf72320862697b/query",
         "BioThings BindingDB API":"https://api.bte.ncats.io/v1/smartapi/38e9e5169a72aee3659c9ddba956790d/query",
         "BioThings BioPlanet Pathway-Disease API":"https://api.bte.ncats.io/v1/smartapi/55a223c6c6e0291dbd05f2faf27d16f4/query",
         "BioThings DDinter API":"https://api.bte.ncats.io/v1/smartapi/00fb85fc776279163199e6c50f6ddfc6/query",
