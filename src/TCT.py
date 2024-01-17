@@ -533,7 +533,6 @@ def Gene_id_converter(id_list, API_url):
     return(result)
 
 
-
 # used. Dec 5, 2023 (Example_query_one_hop_with_category.ipynb)
 def format_query_json(subject_ids, object_ids, subject_categories, object_categories, predicates):
     '''
@@ -965,20 +964,35 @@ def get_curie(name):
 
 
 #used
+def query_chatGPT4(customized_input):
+    message=[{"role": "user", 
+            "content": customized_input}]
+
+    response = openai.ChatCompletion.create(
+    #model="gpt-3.5-turbo",
+    model="gpt-4",
+    max_tokens=1000,
+    temperature=1.2,
+    messages = message)
+
+    #print(len(response.choices[0].message.content.split(" ")))
+
+    return(response.choices[0].message.content)
+
 def query_chatGPT(customized_input):
     message=[{"role": "user", 
             "content": customized_input}]
 
     response = openai.ChatCompletion.create(
     model="gpt-3.5-turbo",
+    #model="gpt-4",
     max_tokens=1000,
     temperature=1.2,
     messages = message)
 
-    print(len(response.choices[0].message.content.split(" ")))
+    #print(len(response.choices[0].message.content.split(" ")))
 
     return(response.choices[0].message.content)
-
 
 # to be removed
 def query_KP_all(subject_ids, object_ids, subject_categories, object_categories, predicates, API_list,metaKG, APInames):
@@ -1450,3 +1464,141 @@ def plot_graph_by_API(for_plot):
 
     display(undirected)
     return(0)
+
+
+def load_json_template():
+    query_json_temp = {
+        "message": {
+            "query_graph": {
+                "nodes": {
+                    "n0": {
+                        "ids":[],
+                        "categories":["biolink:category"]
+                    },
+                    "n1": {
+                        "categories":["biolink:category"]
+                }
+                },
+                "edges": {
+                    "e1": {
+                        "subject": "n0",
+                        "object": "n1",
+                        "predicates": ["biolink:predicates"]
+                    }
+                }
+            }
+        }
+    }
+    return(query_json_temp)
+
+def extract_json(txt):
+    import json
+    lft = txt.find('{')
+    while lft != -1:
+        rgt = txt.find('}', lft+1)
+        while rgt != -1:
+            substr = txt[lft:rgt+1]
+            try:
+                jsn = json.loads(substr)
+                return jsn
+            except Exception as e:
+                rgt = txt.find('}', rgt+1)
+        lft = txt.find('{', lft+1)
+    return None
+
+
+def TRAPI_json_validation(query_json_cur_clean, ALL_predicates, ALL_categories):
+    if 'message' not in query_json_cur_clean.keys():
+        print('message is missing')
+    else:
+        if 'query_graph' not in query_json_cur_clean['message'].keys():
+            print('query_graph is missing')
+        else:
+            if 'edges' not in query_json_cur_clean['message']['query_graph'].keys():
+                print('edges is missing')
+            else:
+                if 'e1' not in query_json_cur_clean['message']['query_graph']['edges'].keys():
+                    print('e1 is missing')
+                else:
+                    if 'predicates' not in query_json_cur_clean['message']['query_graph']['edges']['e1'].keys():
+                        print('predicates is missing')
+                    
+                    else:
+                        if len(set(query_json_cur_clean['message']['query_graph']['edges']['e1']['predicates']).intersection(set(ALL_predicates))) == 0:
+                            print('predicates is not in the KG')
+                        else:
+                            print("Predicates ok!")
+                    
+                if 'nodes' not in query_json_cur_clean['message']['query_graph'].keys():
+                    print('nodes is missing')
+                else:
+                    if 'n0' not in query_json_cur_clean['message']['query_graph']['nodes'].keys():
+                        print('n0 is missing')
+                    else:
+                        if 'categories' not in query_json_cur_clean['message']['query_graph']['nodes']['n0'].keys():
+                            print('categories is missing')
+                        else:
+                            if len(set(query_json_cur_clean['message']['query_graph']['nodes']['n0']['categories']).intersection(set(ALL_categories))) == 0:
+                                print('categories is not in the KG')
+                            else:
+                                print("node0 category OK!")
+                    
+                    if 'n1' not in query_json_cur_clean['message']['query_graph']['nodes'].keys():
+                        print('n1 is missing')
+                    else:
+                        if 'categories' not in query_json_cur_clean['message']['query_graph']['nodes']['n1'].keys():
+                            print('categories is missing')
+                        else:
+                            if len(set(query_json_cur_clean['message']['query_graph']['nodes']['n1']['categories']).intersection(set(ALL_categories))) == 0:
+                                print('categories is not in the KG')
+                            else:
+                                print("node1 category OK!")
+
+    return()
+
+def format_id(query_json_cur_clean):
+    input_nodes = query_json_cur_clean['message']['query_graph']['nodes']['n0']['ids']
+    input_node1_id = []
+    for i in input_nodes:
+        input_node1_id.append(get_curie(i))
+    print(input_node1_id)
+
+    query_json_cur_clean['message']['query_graph']['nodes']['n0']['ids'] = input_node1_id
+    return(query_json_cur_clean)
+
+def query_chatGPT(customized_input, model="gpt-3.5-turbo"):
+    message = [{"role": "user", "content": customized_input}]
+    
+    response = openai.chat.completions.create(
+        model=model,
+        max_tokens=1000,
+        temperature=0.3,
+        messages=message,
+    )
+    
+    # print(len(response.choices[0].message.content.split(" ")))
+    return response.choices[0].message.content
+
+def query_chatGPT4(customized_input):
+    return query_chatGPT(customized_input, "gpt-4")
+    
+
+def ask_chatGPT(prompt_text):
+    response = query_chatGPT(prompt_text)
+    return response
+        
+
+def ask_chatGPT4(prompt_text):
+    response = query_chatGPT4(prompt_text)
+    return response
+
+def find_similar_predicates(query_json_cur_clean, ALL_predicates):
+    current_predicates = query_json_cur_clean['message']['query_graph']['edges']['e1']['predicates']
+    output = ask_chatGPT4("The predicates in the KG are: " + ','.join(ALL_predicates) + ". The predicates in the current query are: " + ','.join(current_predicates) + ". What predicates are similar to the predicates in the current query?")
+    return(output)
+
+def find_similar_category(query_json_cur_clean, ALL_categories):
+    current_predicates1 = query_json_cur_clean['message']['query_graph']['nodes']['n0']['categories']
+    current_predicates2 = query_json_cur_clean['message']['query_graph']['nodes']['n1']['categories']
+    output = ask_chatGPT4("The categories in the KG are: " + ','.join(ALL_categories) + ". The category in the current query are: " + ','.join(current_predicates1 + current_predicates2) + ". What categories are similar to the categories in the current query?")
+    return(output)
