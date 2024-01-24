@@ -8,6 +8,8 @@ import networkx as nx
 import numpy as np
 import openai
 
+from IPython.display import display
+
 
 def TCT_help(func):
     print(func.__doc__)
@@ -1602,3 +1604,150 @@ def find_similar_category(query_json_cur_clean, ALL_categories):
     current_predicates2 = query_json_cur_clean['message']['query_graph']['nodes']['n1']['categories']
     output = ask_chatGPT4("The categories in the KG are: " + ','.join(ALL_categories) + ". The category in the current query are: " + ','.join(current_predicates1 + current_predicates2) + ". What categories are similar to the categories in the current query?")
     return(output)
+
+
+def visulize_path(input_node1_id, intermediate_node, input_node3_id, result, result2):
+    forplot_subject = []
+    forplot_object = []
+    forplot_predicate = []
+    forplot_Infores = []
+
+    for k in result.keys():
+        if (result[k]['object'] == intermediate_node and result[k]['subject'] == input_node1_id) or (result[k]['subject'] == intermediate_node and result[k]['object'] == input_node1_id)  :
+            forplot_subject.append(result[k]['subject'])
+            forplot_object.append(result[k]['object'])
+            #forplot_predicate.append(result[k]['predicate'].split(':')[1])
+            cur_sources_list = []
+            sources = result[k]['sources']
+            
+            for s in sources:
+                cur_source = s['resource_id']
+                cur_sources_list.append(cur_source)
+                
+            forplot_Infores.append(cur_sources_list)
+
+            forplot_predicate.append(result[k]['predicate'].split(':')[1] + "::" + cur_sources_list[0])
+
+    for k in result2.keys():
+        if (result2[k]['object'] == intermediate_node and result2[k]['subject'] ==input_node3_id ) or (result2[k]['subject'] == intermediate_node and result2[k]['object'] ==input_node3_id)  :
+            forplot_subject.append(result2[k]['subject'])
+            forplot_object.append(result2[k]['object'])
+            #forplot_predicate.append(result2[k]['predicate'].split(':')[1])
+            cur_sources_list = []
+            sources = result2[k]['sources']
+            
+            for s in sources:
+                cur_source = s['resource_id']
+                cur_sources_list.append(cur_source)
+                
+            forplot_Infores.append(cur_sources_list)
+            forplot_predicate.append(result2[k]['predicate'].split(':')[1] + "::" +  cur_sources_list[0])
+            
+    forplot =  pd.DataFrame({"Subject":forplot_subject, "Object":forplot_object, "Predicates":forplot_predicate})
+
+    # get preferred name
+    subject_name = list(forplot["Subject"] )
+    object_name = list(forplot["Object"])
+    dic_id_map = ID_convert_to_preferred_name_nodeNormalizer(subject_name+ object_name)
+    new_subject_name = []
+    for item in subject_name:
+        if item in dic_id_map:
+            new_subject_name.append(dic_id_map[item])
+        else:
+            new_subject_name.append(item)   
+
+    new_object_name = []
+    for item in object_name:
+        if item in dic_id_map:
+            new_object_name.append(dic_id_map[item])
+        else:
+            new_object_name.append(item)         
+    forplot['Subject_name'] = new_subject_name
+    forplot['Object_name'] = new_object_name
+
+    forplot = forplot.drop_duplicates()
+
+    import networkx as nx
+    import matplotlib.pyplot as plt
+    import ipycytoscape
+
+    graph = nx.from_pandas_edgelist(forplot, source='Subject_name', target='Object_name', edge_attr=[ 'Predicates'], create_using=nx.MultiGraph)
+    graph_style = [{'selector': 'node[id]',
+                             'style': {
+                                  'font-family': 'Arial',
+                                  'font-size': '12px',
+                                 'text-valign': 'center',
+                                 'label': 'data(id)',
+                        }},
+                        {'selector': 'node',
+                         'style': {
+                             'background-color': 'lightblue',
+                             'shape': 'round-rectangle',
+                             'width': '3em',
+                         }},
+                        {'selector': 'edge[Predicates]',
+                         'style': {
+                             'label': 'data(Predicates)',
+                             'font-size': '8px',
+                         }},
+                        {"selector": "edge.directed",
+                         "style": {
+                            "curve-style": "bezier",
+                            "target-arrow-shape": "triangle",
+                        }},
+                       {"selector": "edge",
+                         "style": {
+                            "curve-style": "bezier",
+                        }},
+
+                    ]
+    pathgraph = ipycytoscape.CytoscapeWidget()
+    pathgraph.graph.add_graph_from_networkx(graph)
+    pathgraph.set_layout(title='Path', nodeSpacing=80, edgeLengthVal=50, )
+    pathgraph.set_style(graph_style)
+
+    display(pathgraph)
+    return(forplot)
+
+
+def get_similar_category(query_json_cur_clean, KG_category):
+    similar_category_text = find_similar_category(query_json_cur_clean, KG_category)
+    words = similar_category_text.split(' ')
+    similar_category = []
+    for word in words:
+        if word.startswith('biolink:') :
+            similar_category.append(word)
+
+    for category in query_json_cur_clean['message']['query_graph']['nodes']['n0']['categories']:
+        similar_category.append(category)
+
+    for category in query_json_cur_clean['message']['query_graph']['nodes']['n1']['categories']:
+        similar_category.append(category)
+
+    similar_category = list(set(similar_category))
+
+    similar_category
+    return similar_category
+
+def get_similar_predicate(query_json_cur_clean, All_predicates):
+    similar_predicate_text = find_similar_predicates(query_json_cur_clean, All_predicates)
+    similar_predicate_text
+    lines = similar_predicate_text.split('\n')
+    words = []
+    for line in lines:
+        cur_words = line.split(' ')
+        words = words + cur_words
+    similar_predicate = []
+    for word in words:
+        if word.startswith('biolink:') :
+            similar_predicate.append(word)
+
+    for predicate in query_json_cur_clean['message']['query_graph']['edges']['e1']['predicates']:
+        similar_predicate.append(predicate)
+
+    similar_predicate = list(set(similar_predicate))
+
+    similar_predicate
+    return similar_predicate
+
+
