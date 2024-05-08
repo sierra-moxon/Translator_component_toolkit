@@ -7,6 +7,9 @@ import ipycytoscape
 import networkx as nx
 import numpy as np
 import openai
+import matplotlib
+import matplotlib.pyplot as plt
+plt.switch_backend('module://ipykernel.pylab.backend_inline')
 
 from IPython.display import display
 
@@ -357,19 +360,134 @@ def ID_convert_to_preferred_name_nodeNormalizer(id_list):
                     dic_id_map[id] = id
     return(dic_id_map)
 
-# Used. Jan 5, 2024
-def visulization_one_hop_ranking(result_ranked_by_primary_infores,result_parsed , 
-                                 num_of_nodes = 50, 
+def visulization_one_hop_ranking_input_as_list(result_ranked_by_primary_infores,result_parsed , 
+                                 num_of_nodes = 20, 
                                  input_query = "NCBIGene:3845",
-                                 fontsize = 12,
+                                 fontsize = 6,
                                  title_fontsize = 12,
+                                 output_png1="NE_heatmap1.png",
+                                 output_png2="NE_heatmap2.png"
                                  ):
     # edited Dec 5, 2023
     predicates_list = []
     primary_infore_list = []
     aggregator_infore_list = []
 
+    from io import BytesIO
+    for i in range(0, result_ranked_by_primary_infores.shape[0]):
+        oupput_node = result_ranked_by_primary_infores['output_node'][i]
+        type_of_node = result_ranked_by_primary_infores['type_of_nodes'][i]
+        if type_of_node == 'object':
+            subject = input_query
+            object = oupput_node
+        else:
+            subject = oupput_node
+            object = input_query
+            
+        predicates_list = predicates_list + result_parsed[subject + "_" + object]['predicate']
+        primary_infore_list = primary_infore_list + result_parsed[subject + "_" + object]['primary_knowledge_source']
+        
+        if 'aggregator_knowledge_source' in result_parsed[subject + "_" + object]:
+            aggregator_infore_list = aggregator_infore_list + result_parsed[subject + "_" + object]['aggregator_knowledge_source']
+            aggregator_infore_list = list(set(aggregator_infore_list))
 
+        predicates_list = list(set(predicates_list))
+        primary_infore_list = list(set(primary_infore_list))
+        
+
+    predicates_by_nodes = {}
+    for predict in predicates_list:
+        predicates_by_nodes[predict] = []
+
+    primary_infore_by_nodes = {}
+    for predict in primary_infore_list:
+        primary_infore_by_nodes[predict] = []
+
+    aggregator_infore_by_nodes = {}
+    for predict in aggregator_infore_list:
+        aggregator_infore_by_nodes[predict] = []
+        
+    names = []
+    for i in range(0, result_ranked_by_primary_infores.shape[0]):
+    #for i in range(0, 10):
+        input_nodes = result_ranked_by_primary_infores['input_node'].values[i]
+
+        oupput_node = result_ranked_by_primary_infores['output_node'].values[i]
+        names.append(oupput_node)
+        type_of_node = result_ranked_by_primary_infores['type_of_nodes'].values[i]
+        if type_of_node == 'object':
+            subject = input_query
+            object = oupput_node
+        else:
+            subject = oupput_node
+            object = input_query
+        new_id = subject + "_" + object
+
+        cur_primary_infore = result_parsed[new_id]['primary_knowledge_source']
+        for predict in primary_infore_list:
+            if predict in cur_primary_infore:
+                primary_infore_by_nodes[predict].append(1)
+            else:
+                primary_infore_by_nodes[predict].append(0)
+
+
+
+        cur_predicates = result_parsed[new_id]['predicate']
+        for predict in predicates_list:
+            if predict in cur_predicates:
+                predicates_by_nodes[predict].append(1)
+            else:
+                predicates_by_nodes[predict].append(0)
+
+    #convert = False
+
+    #for item in colnames:
+    #    if 'NCBIGene' in item:
+    #        convert = True
+    #if convert:
+        #Gene_id_map = Gene_id_converter(colnames, "http://127.0.0.1:8000/query_name_by_id") # option 1
+        #Gene_id_map = Generate_Gene_id_map() # option 2
+
+    dic_id_map = ID_convert_to_preferred_name_nodeNormalizer(names)
+    new_colnames = []
+    for item in names:
+        if item in dic_id_map:
+            new_colnames.append(dic_id_map[item])
+        else:
+            new_colnames.append(item)    
+
+    #else:
+    #    new_colnames = colnames
+            
+    primary_infore_by_nodes_df = pd.DataFrame(primary_infore_by_nodes)
+    primary_infore_by_nodes_df.index = new_colnames
+    primary_infore_by_nodes_df = primary_infore_by_nodes_df.T
+
+
+    predicates_by_nodes_df = pd.DataFrame(predicates_by_nodes)
+    predicates_by_nodes_df.index = new_colnames
+    predicates_by_nodes_df = predicates_by_nodes_df.T
+
+    plot_heatmap(primary_infore_by_nodes_df, num_of_nodes, fontsize, title_fontsize,output_png1)
+    plot_heatmap(predicates_by_nodes_df, num_of_nodes, fontsize, title_fontsize,output_png2)
+
+    return(predicates_by_nodes_df)
+
+# Used. Jan 5, 2024
+def visulization_one_hop_ranking(result_ranked_by_primary_infores,result_parsed , 
+                                 num_of_nodes = 20, 
+                                 input_query = "NCBIGene:3845",
+                                 fontsize = 6,
+                                 title_fontsize = 12,
+                                 output_png1="NE_heatmap1.png",
+                                 output_png2="NE_heatmap2.png"
+                                 ):
+    # edited Dec 5, 2023
+    predicates_list = []
+    primary_infore_list = []
+    aggregator_infore_list = []
+
+    from io import BytesIO
     for i in range(0, result_ranked_by_primary_infores.shape[0]):
         oupput_node = result_ranked_by_primary_infores['output_node'][i]
         type_of_node = result_ranked_by_primary_infores['type_of_nodes'][i]
@@ -462,34 +580,77 @@ def visulization_one_hop_ranking(result_ranked_by_primary_infores,result_parsed 
     predicates_by_nodes_df.index = new_colnames
     predicates_by_nodes_df = predicates_by_nodes_df.T
 
+    plot_heatmap(primary_infore_by_nodes_df, num_of_nodes, fontsize, title_fontsize,output_png1)
+    plot_heatmap(predicates_by_nodes_df, num_of_nodes, fontsize, title_fontsize,output_png2)
+
+    return(predicates_by_nodes_df)
+
+def plot_heatmap(predicates_by_nodes_df,num_of_nodes = 20, 
+                                 fontsize = 6,
+                                 title_fontsize = 10, 
+                                 output_png="NE_heatmap.png"):
+    #matplotlib.use('Agg')
+    
     title = "Ranking of one-hop nodes by primary infores"
     ylab = "infores"
-    df = primary_infore_by_nodes_df.iloc[:,0:num_of_nodes]
-    plt.figure( figsize=(0.8+df.shape[1]*0.2,3.5),dpi = 300)
-        #p1 = sns.heatmap(df, cmap="Blues")
-        # heatmap without color bar
-    p1 = sns.heatmap(df, cmap="Blues", cbar=False)
+    df = predicates_by_nodes_df.iloc[:,0:num_of_nodes]
+    colnames = list(df.columns)
+    # create teh figure and subplot
+    fig = plt.figure( figsize=(0.8+df.shape[1]*0.1,3.5),dpi = 300)
+    ax = fig.add_subplot(111)
+
+    # create the heatmap
+    # heatmap with border
+    p1 = sns.heatmap(df, cmap="Blues", cbar=False, ax=ax, linecolor='grey', linewidth=0.2)
+
     p1.set_title(title)
     p1.set_ylabel(ylab)
-    p1.set_xticklabels(p1.get_xticklabels(), rotation=90, fontsize = fontsize)
+    print(p1.get_xticklabels())
+    # set xticklabels with colnames
+
+    #p1.set_xticklabels(colnames, rotation=90, fontsize = fontsize)
+    plt.xticks(ticks=range(len(df.columns)), labels=df.columns)
+
         # set title font size
     p1.title.set_size(title_fontsize)
+    plt.show()
+    # save the figure
+    #plt.savefig(output_png, bbox_inches='tight', dpi=300)
 
-    title = "Ranking of one-hop nodes by predicate"
-    ylab = "Predicate"
+
+
+def plot_heatmap_ui(predicates_by_nodes_df,num_of_nodes = 20, 
+                                 fontsize = 6,
+                                 title_fontsize = 10, 
+                                 output_png="NE_heatmap.png"):
+    matplotlib.use('Agg')
+    
+    title = "Ranking of one-hop nodes by primary infores"
+    ylab = "infores"
     df = predicates_by_nodes_df.iloc[:,0:num_of_nodes]
-    plt.figure( figsize=(0.8+df.shape[1]*0.2,3.5),dpi = 300)
-        #p1 = sns.heatmap(df, cmap="Blues")
-        # heatmap without color bar
-    p1 = sns.heatmap(df, cmap="Blues", cbar=False)
+    colnames = list(df.columns)
+    # create teh figure and subplot
+    fig = plt.figure( figsize=(0.8+df.shape[1]*0.1,3.5),dpi = 100)
+    ax = fig.add_subplot(111)
+
+    # create the heatmap
+    # heatmap with border
+    p1 = sns.heatmap(df, cmap="Blues", cbar=False, ax=ax, linecolor='grey', linewidth=0.2)
+
     p1.set_title(title)
     p1.set_ylabel(ylab)
-    p1.set_xticklabels(p1.get_xticklabels(), rotation=90, fontsize = fontsize)
+    print(p1.get_xticklabels())
+    # set xticklabels with colnames
+
+    #p1.set_xticklabels(colnames, rotation=90, fontsize = fontsize)
+    plt.xticks(ticks=range(len(df.columns)), labels=df.columns)
+
         # set title font size
-    p1.title.set_size(12)
+    p1.title.set_size(title_fontsize)
+   # plt.show()
+    # save the figure
+    plt.savefig(output_png, bbox_inches='tight', dpi=300)
 
-
-    return(p1)
 
 # used. Dec 5, 2023  (Example_query_one_hop_with_category.ipynb)
 def Gene_id_converter(id_list, API_url):
@@ -775,6 +936,58 @@ def parse_network_result(result, input_node1_list):
     #result_df.to_csv('result_df.csv', index=False)
     return result_df
 
+def rank_by_primary_infores_input_as_list(result_parsed, input_nodes):
+    ''' Editd Dec 5, 2023'''
+    rank_df = pd.DataFrame()
+    output_nodes = []
+    input_nodes_list = []
+    Num_of_primary_infores = []
+    type_of_nodes   = []
+    unique_predicates = []
+    for i in result_parsed:
+        curr_predict = result_parsed[i]['predicate']
+        subject = result_parsed[i]['subject']
+        object = result_parsed[i]['object']
+
+        if subject in input_nodes:
+            input_nodes_list.append(subject)
+            output_nodes.append(object)
+            type_of_nodes.append('object')
+            Num_of_primary_infores.append(len(set(result_parsed[i]['primary_knowledge_source'])))
+            unique_predicates.append(curr_predict)
+            
+
+        elif object in input_nodes:
+            input_nodes_list.append(object)
+            output_nodes.append(subject)
+            type_of_nodes.append('subject')
+            unique_predicates.append(curr_predict)
+        
+            Num_of_primary_infores.append(len(set(result_parsed[i]['primary_knowledge_source'])))
+
+    colnames = output_nodes
+    names = colnames
+    dic_id_map = ID_convert_to_preferred_name_nodeNormalizer(names)
+    new_colnames = []
+    for item in names:
+        if item in dic_id_map:
+            new_colnames.append(dic_id_map[item])
+        else:
+            new_colnames.append(item)   
+
+    rank_df['output_node'] = output_nodes
+    rank_df['Name'] = new_colnames
+    rank_df['Num_of_primary_infores'] = Num_of_primary_infores
+    rank_df['type_of_nodes'] = type_of_nodes
+    rank_df['unique_predicates'] = unique_predicates
+    
+    rank_df['input_node'] = input_nodes_list
+    
+    rank_df_ranked = rank_df.sort_values(by=['Num_of_primary_infores'], ascending=False)
+    return(rank_df_ranked)
+
+
+
 # parse results to a dictionary. Dec 5, 2023
 # used. Dec 5, 2023 (Example_query_one_hop_with_category.ipynb)
 def rank_by_primary_infores(result_parsed, input_node):
@@ -783,7 +996,9 @@ def rank_by_primary_infores(result_parsed, input_node):
     output_nodes = []
     Num_of_primary_infores = []
     type_of_nodes   = []
+    unique_predicates = []
     for i in result_parsed:
+        curr_predict = result_parsed[i]['predicate']
         subject = result_parsed[i]['subject']
         object = result_parsed[i]['object']
 
@@ -791,15 +1006,32 @@ def rank_by_primary_infores(result_parsed, input_node):
             output_nodes.append(object)
             type_of_nodes.append('object')
             Num_of_primary_infores.append(len(set(result_parsed[i]['primary_knowledge_source'])))
+            unique_predicates.append(curr_predict)
+            
+
         elif object == input_node:
             output_nodes.append(subject)
             type_of_nodes.append('subject')
+            unique_predicates.append(curr_predict)
         
             Num_of_primary_infores.append(len(set(result_parsed[i]['primary_knowledge_source'])))
 
+    colnames = output_nodes
+    names = colnames
+    dic_id_map = ID_convert_to_preferred_name_nodeNormalizer(names)
+    new_colnames = []
+    for item in names:
+        if item in dic_id_map:
+            new_colnames.append(dic_id_map[item])
+        else:
+            new_colnames.append(item)   
+
     rank_df['output_node'] = output_nodes
+    rank_df['Name'] = new_colnames
     rank_df['Num_of_primary_infores'] = Num_of_primary_infores
     rank_df['type_of_nodes'] = type_of_nodes
+    rank_df['unique_predicates'] = unique_predicates
+    
     
     
     rank_df_ranked = rank_df.sort_values(by=['Num_of_primary_infores'], ascending=False)
@@ -815,6 +1047,7 @@ def merge_by_ranking_index(result_ranked_by_primary_infores,
                            fontsize = 12,
                            ):
 
+    
     dic_rank1 = {}
     for i in range(0, result_ranked_by_primary_infores.shape[0]):
         dic_rank1[result_ranked_by_primary_infores['output_node'][i]] = 1 - i / result_ranked_by_primary_infores.shape[0]
@@ -847,25 +1080,6 @@ def merge_by_ranking_index(result_ranked_by_primary_infores,
         else:
             new_colnames.append(item)   
 
-    #for item in colnames:
-    #    if 'NCBIGene' in item:
-    #        convert = True
-    #if convert:
-        #Gene_id_map = Gene_id_converter(colnames, "http://127.0.0.1:8000/query_name_by_id")
-        #Gene_id_map = Generate_Gene_id_map()
-    #    Gene_id_map = ID_convert_to_preferred_name_nodeNormalizer(colnames)
-    #    print(Gene_id_map)
-            
-    #    new_colnames = []
-    #    for item in colnames:
-    #        if item in Gene_id_map.keys():
-    #            new_colnames.append(Gene_id_map[item])
-    #        else:
-    #            new_colnames.append(item)    
-
-    #else:
-    #    new_colnames = colnames
-
     result_xy_sorted.index = new_colnames
     result_xy_sorted = result_xy_sorted.sort_values(by=['score'], ascending=False)
 
@@ -876,7 +1090,7 @@ def merge_by_ranking_index(result_ranked_by_primary_infores,
     ax.set_ylabel("Ranking score")
     ax.title.set_size(title_fontsize)
     plt.tight_layout()
-    plt.show()
+    #plt.show()
 
     return result_xy_sorted
 
@@ -884,9 +1098,10 @@ def merge_by_ranking_index(result_ranked_by_primary_infores,
 
 def merge_ranking_by_number_of_infores(result_ranked_by_primary_infores, 
                                        result_ranked_by_primary_infores1, 
-                                       top_n = 50,
+                                       top_n = 30,
                                        fontsize = 12,
                                        title_fontsize = 12,
+                                       output_png = "NE_heatmap.png"
                                        ):
     overlapped = (set(result_ranked_by_primary_infores1['output_node']).intersection(set(result_ranked_by_primary_infores['output_node'])))
     x = result_ranked_by_primary_infores.loc[result_ranked_by_primary_infores['output_node'].isin(overlapped)]
@@ -899,11 +1114,24 @@ def merge_ranking_by_number_of_infores(result_ranked_by_primary_infores,
     for i in range(y.shape[0]):
         dic_y[y.iloc[i]['output_node']] = y.iloc[i]['Num_of_primary_infores']/np.max(y['Num_of_primary_infores'])
 
+    predicts_list1 = []
+    predicts_list2 = []
     dic_xy = {}
     for i in overlapped:
+        #print(result_ranked_by_primary_infores[result_ranked_by_primary_infores['output_node'] == i]['unique_predicates'])
         dic_xy[i] = dic_x[i] * dic_y[i]
-        
+        predicts_list1.append('\n'.join(list(set(result_ranked_by_primary_infores[result_ranked_by_primary_infores['output_node'] == i]['unique_predicates'].values[0]))))
+        predicts_list2.append('\n'.join(list(result_ranked_by_primary_infores1[result_ranked_by_primary_infores1['output_node'] == i]['unique_predicates'].values[0])))
+
     result_xy = pd.DataFrame.from_dict(dic_xy, orient='index', columns=['score'])
+    result_xy['output_node'] = result_xy.index
+    # convert the output_node to preferred name
+
+    
+        
+    #result_xy["output_node_name"] = new_colnames
+    result_xy['predictes1'] = predicts_list1
+    result_xy['predictes2'] = predicts_list2
 
     result_xy_sorted = result_xy.sort_values(by=['score'], ascending=False)
 
@@ -919,37 +1147,33 @@ def merge_ranking_by_number_of_infores(result_ranked_by_primary_infores,
         else:
             new_colnames.append(item)   
 
-    #for item in colnames:
-    #    if 'NCBIGene' in item:
-    #        convert = True
-    #print(convert)
-    #if convert:
-        #Gene_id_map = Gene_id_converter(colnames, "http://127.0.0.1:8000/query_name_by_id")
-        #Gene_id_map = Generate_Gene_id_map()
-    #    Gene_id_map = ID_convert_to_preferred_name_nodeNormalizer(colnames)
-    #    new_colnames = []
-    #    for item in colnames:
-    #        if item in Gene_id_map.keys():
-    #            new_colnames.append(Gene_id_map[item])
-    #        else:
-    #            new_colnames.append(item)    
-
-    #else:
-    #    new_colnames = colnames
 
     result_xy_sorted.index = new_colnames
+    result_xy_sorted['output_node_name'] = new_colnames
+    x = result_xy_sorted.iloc[0:top_n].index
+    y = result_xy_sorted.iloc[0:top_n]['score']
 
+    plot_path_bar(x,y,fontsize, title_fontsize, output_png=output_png)
 
-    # barplot of the top 50 genes using sns
-    sns.set(style="whitegrid")
-    plt.figure(figsize=(5,5), dpi = 300)
-    ax = sns.barplot(x=result_xy_sorted.iloc[0:top_n].index, y=result_xy_sorted.iloc[0:top_n]['score'], color='grey')
+    return result_xy_sorted
+
+def plot_path_bar(x,
+                  y,
+                    fontsize = 8,
+                    title_fontsize = 10, 
+                    output_png="NE_heatmap.png"):
+    matplotlib.use('Agg')
+    
+    title = "Bridging nodes"
+    fig = plt.figure(figsize=(5,5), dpi = 300)
+    ax = fig.add_subplot(111)
+    ax = sns.barplot(x=x, y=y, color='grey')
     ax.set_xticklabels(ax.get_xticklabels(), rotation=90, ha="center", fontsize=fontsize)
     ax.set_ylabel("Ranking score")
     ax.title.set_size(title_fontsize)
-    plt.tight_layout()
-    plt.show()
-    return result_xy_sorted
+    # save the figure
+    plt.savefig(output_png, bbox_inches='tight', dpi=300)
+
 
 # Sri-name-resolver  Used Dec 5, 2023 (Example_query_one_hop_with_category.ipynb)
 def get_curie(name):
@@ -964,8 +1188,34 @@ def get_curie(name):
     else:
         return(name)
 
+# annotate gene pairs or a list of genes. Feb 25, 2024
+def get_pair_annotation(result, input_node_list):
+    pairs_found = {}
+    for i in result.keys():
+        
+        if result[i]['subject'] in input_node_list and result[i]['object'] in input_node_list and result[i]['subject'] != result[i]['object']:
+            pairs_found[i] = result[i]
+    return pairs_found
+
+
+def parse_pair_annotation(pairs_found, input_node_list):
+    edge_list = []
+    names = ID_convert_to_preferred_name_nodeNormalizer(input_node_list)
+    dic_names = {}
+    for i in input_node_list:
+        dic_names[i] = names[i]
+
+    for i in pairs_found.keys():
+        primary_source = ''
+        for source in pairs_found[i]['sources']:
+            if source['resource_role'] == 'primary_knowledge_source':
+                primary_source = source['resource_id']
+                break
+        edge_list.append([pairs_found[i]['subject'],dic_names[pairs_found[i]['subject']],  pairs_found[i]['predicate'], pairs_found[i]['object'], dic_names[pairs_found[i]['object']], primary_source ])
+    return edge_list
 
 #used
+
 def query_chatGPT4(customized_input):
     message=[{"role": "user", 
             "content": customized_input}]
