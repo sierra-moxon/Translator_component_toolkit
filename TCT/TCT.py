@@ -9,7 +9,10 @@ import numpy as np
 import openai
 import matplotlib
 import matplotlib.pyplot as plt
-plt.switch_backend('module://ipykernel.pylab.backend_inline')
+import ipycytoscape
+
+
+# plt.switch_backend('module://ipykernel.pylab.backend_inline')
 
 from IPython.display import display
 
@@ -17,10 +20,13 @@ from IPython.display import display
 def TCT_help(func):
     print(func.__doc__)
 
+
+    
 # used. Jan 5, 2024
 def get_Translator_APIs():
     Translator_APIs = []
-    Translator_apps_url = "https://smart-api.info/api/query?q=tags.name:translator&fields=info,_meta,tags&meta=1&size=500"
+    #Translator_apps_url = "https://smart-api.info/api/query?q=tags.name:translator&fields=info,_meta,tags&meta=1&size=500"
+    Translator_apps_url = "https://dev.smart-api.info/api/query?q=tags.name:translator&fields=info,_meta,tags&meta=1&size=500"
     Translator_apps = requests.get(Translator_apps_url).json()['hits']
     for app in Translator_apps:
         Translator_APIs.append(app['info']['title'])
@@ -138,7 +144,8 @@ def list_Translator_APIs():
 
 # used Dec 5, 2023
 def find_link(name):
-    pre = "https://dev.smart-api.info/api/metakg/consolidated?size=2000&q=%28api.x-translator.component%3AKP+AND+api.name%3A"
+    #pre = "https://dev.smart-api.info/api/metakg/consolidated?size=2000&q=%28api.x-translator.component%3AKP+AND+api.name%3A" # This works for the previous version
+    pre = "https://smart-api.info/api/metakg/consolidated?size=2000&q=%28api.x-translator.component%3AKP+AND+api.name%3A" 
     end = "%5C%28Trapi+v1.4.0%5C%29%29"
     if '(Trapi v1.4.0)' in name:
         url = pre
@@ -183,7 +190,8 @@ def get_KP_metadata(APInames):
         json_text ={}
         if KP == "RTX KG2 - TRAPI 1.4.0": 
             #print("ARAX KG2 - TRAPI 1.4.0")
-            text =requests.get("https://dev.smart-api.info/api/metakg/consolidated?size=20&q=%28api.x-translator.component%3AKP+AND+api.name%3ARTX+KG2+%5C-+TRAPI+1%5C.4%5C.0%29").text
+            text =requests.get("https://dev.smart-api.info/api/metakg/consolidated?size=20&q=%28api.x-translator.component%3AKP+AND+api.name%3ARTX+KG2+%5C-+TRAPI+1%5C.4%5C.0%29").text  # This works for the previous version
+            #text =requests.get("https://smart-api.info/api/metakg/consolidated?size=20&q=%28api.x-translator.component%3AKP+AND+api.name%3ARTX+KG2+%5C-+TRAPI+1%5C.4%5C.0%29").text  # This works for the previous version
             json_text = json.loads(text)
         else:
             text = requests.get(find_link(KP)).text
@@ -304,6 +312,7 @@ def Generate_Gene_id_map():
 # Used. Jan 5, 2024
 def query_name_resolver_reverse(query_json):
     response = requests.post("https://name-lookup.ci.transltr.io/reverse_lookup", json=query_json)
+    #response = requests.post("https://name-lookup.transltr.io/reverse_lookup", json=query_json)
     result = {}
     if response.status_code == 200:
         result = response.json()
@@ -324,7 +333,7 @@ def ID_convert_to_preferred_name_nodeNormalizer(id_list):
                 if "preferred_name" in result[id]:
                     dic_id_map[id] = result[id]["preferred_name"]
                 else:
-                    print(id + "no preferred name")
+                    print(id + ": no preferred name -reverse")
                     dic_id_map[id] = id
             else:
                 print(id + "not in the result")
@@ -353,7 +362,7 @@ def ID_convert_to_preferred_name_nodeNormalizer(id_list):
                     if "preferred_name" in result[id]:
                         dic_id_map[id] = result[id]["preferred_name"]
                     else:
-                        print(id+":no preferred name")
+                        print(id+": no preferred name")
                         dic_id_map[id] = id
                 else:
                     print(id+"not in the result")
@@ -623,7 +632,7 @@ def plot_heatmap_ui(predicates_by_nodes_df,num_of_nodes = 20,
                                  fontsize = 6,
                                  title_fontsize = 10, 
                                  output_png="NE_heatmap.png"):
-    matplotlib.use('Agg')
+   
     
     title = "Ranking of one-hop nodes by primary infores"
     ylab = "infores"
@@ -1177,7 +1186,7 @@ def plot_path_bar(x,
 
 # Sri-name-resolver  Used Dec 5, 2023 (Example_query_one_hop_with_category.ipynb)
 def get_curie(name):
-    url = "https://name-lookup.ci.transltr.io/lookup?string="+name
+    url = "https://name-lookup.transltr.io/lookup?string="+name
     response = requests.get(url)
     if response.status_code == 200:
         result = response.json()
@@ -1917,9 +1926,7 @@ def visulize_path(input_node1_id, intermediate_node, input_node3_id, result, res
 
     forplot = forplot.drop_duplicates()
 
-    import networkx as nx
-    import matplotlib.pyplot as plt
-    import ipycytoscape
+   
 
     graph = nx.from_pandas_edgelist(forplot, source='Subject_name', target='Object_name', edge_attr=[ 'Predicates'], create_using=nx.MultiGraph)
     graph_style = [{'selector': 'node[id]',
