@@ -1,7 +1,7 @@
 # Translator component toolkit (TCT)
 
 ## What is TCT?
-Translator Component Toolkit is a python library and related jupyter notebooks allowing users to explore and use KGs in the Translator ecosystems. 
+Translator Component Toolkit is a python library that allowing users to explore and use KGs in the Translator ecosystems. 
 
 ## Key features for TCT
 Allowing users to select APIs, predicates according to the user's intention. <br>
@@ -39,4 +39,4 @@ An example notebook for add a user's API can be find [here](./notebooks/Connecti
 TCT is a tool that helps to explore knowledge graphs developed in the Biomedical Data Translator Consortium. Consortium members and external contributors are encouraged to submit issues and pull requests. 
 
 ## Contact info
-Guangrong Qin, gqin@isbscience.org
+Guangrong Qin, guangrong.qin@isbscience.org
