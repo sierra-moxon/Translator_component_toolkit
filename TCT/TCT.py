@@ -1173,8 +1173,10 @@ def plot_path_bar(x,
 
 # Sri-name-resolver  Used Dec 5, 2023 (Example_query_one_hop_with_category.ipynb)
 def get_curie(name):
-    url = "https://name-lookup.transltr.io/lookup?string="+name
-    response = requests.get(url)
+    response = requests.get("https://name-lookup.transltr.io/lookup", params={
+        'string': name,
+        'autocomplete': False
+    })
     if response.status_code == 200:
         result = response.json()
         if len(result) != 0:
@@ -2383,3 +2385,7 @@ if __name__ == "__main__":
     }:
         raise RuntimeError(f"Incorrect result: {result5}")
 
+    # Test get_curie() too while we're at it.
+    result6 = get_curie('BRCA1')
+    if result6 != 'NCBIGene:672':
+        raise RuntimeError(f"Searching 'BRCA1' on NameLookup does not return NCBIGene:672 as expected but {result6}.")
