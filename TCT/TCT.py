@@ -35,38 +35,38 @@ def get_Translator_APIs():
 # used Dec 5, 2023 (Example_query_one_hop_with_category.ipynb)
 def list_Translator_APIs():
     APInames = {
-        'Automat-ctd(Trapi v1.4.0)':"",
-        'Automat-sri-reference-kg(Trapi v1.4.0)':"",
-        'Autonomous Relay System (ARS) TRAPI':"",
-        'BioLink API':"",
-        'BioThings AGR API':"",
-        'BioThings BioPlanet Pathway-Gene API':"",
-        'BioThings DDInter API':"",
-        'BioThings Explorer (BTE) TRAPI':"",
-        'BioThings FooDB API':"",
-        'BioThings FoodData Central API':"",
-        'BioThings GO Biological Process API':"",
-        'BioThings InnateDB API':"", # not in TRAPI standard
-        'BioThings RARe-SOURCE API':"",
-        'BioThings repoDB API':"",
-        'Biolink Lookup':"",
-        'Biothings Therapeutic Target Database API':"",
-        'COHD TRAPI':"https://cohd-api.transltr.io/api/query",
-        'Complex Portal Web Service':"",
-        'Curated Query Service':"",
-        'EBI Proteins API':"",
-        'Gene-List Network Enrichment Analysis':"",
-        'Knowledge Collaboratory API':"",
-        'LitVar API':"",
-        'RaMP API v1.0.1':"",
-        'SmartAPI API':"",
-        'Sri-answer-appraiser(Trapi v1.4.0)':"",
-        'Sri-name-resolver':"",
-        'Sri-node-normalizer(Trapi v1.3.0)':"",
-        'Sri-node-normalizer(Trapi v1.4.0)':"",
-        'Translator Annotation Service':"",
-        'Workflow-runner(Trapi v1.4.0)':"",
-        'imProving Agent for TRAPI 1.4':"",
+        'Automat-ctd(Trapi v1.4.0)':"https://automat.transltr.io/ctd/1.4/query",
+        #'Automat-sri-reference-kg(Trapi v1.4.0)':"",
+        #'Autonomous Relay System (ARS) TRAPI':"",
+        #'BioLink API':"",
+        #'BioThings AGR API':"",
+        #'BioThings BioPlanet Pathway-Gene API':"",
+        #'BioThings DDInter API':"",
+        'BioThings Explorer (BTE) TRAPI':"https://bte.transltr.io/v1/query",
+        #'BioThings FooDB API':"",
+        #'BioThings FoodData Central API':"",
+        #'BioThings GO Biological Process API':"",
+        #'BioThings InnateDB API':"", # not in TRAPI standard
+        #'BioThings RARe-SOURCE API':"",
+        #'BioThings repoDB API':"",
+        #'Biolink Lookup':"",
+        'Biothings Therapeutic Target Database API':"https://biothings.ncats.io/ttd/query",
+        #'COHD TRAPI':"https://cohd-api.transltr.io/api/query",
+        #'Complex Portal Web Service':"",
+        #'Curated Query Service':"",
+        #'EBI Proteins API':"",
+        #'Gene-List Network Enrichment Analysis':"",
+        #'Knowledge Collaboratory API':"",
+        #'LitVar API':"",
+        #'RaMP API v1.0.1':"",
+        #'SmartAPI API':"",
+        #'Sri-answer-appraiser(Trapi v1.4.0)':"",
+        #'Sri-name-resolver':"",
+        #'Sri-node-normalizer(Trapi v1.3.0)':"",
+        #'Sri-node-normalizer(Trapi v1.4.0)':"",
+        #'Translator Annotation Service':"",
+        #'Workflow-runner(Trapi v1.4.0)':"https://translator-workflow-runner.transltr.io/query",
+        #'imProving Agent for TRAPI 1.4':"",
         #'mediKanren':'https://medikanren-trapi.transltr.io/query', #ARA
         #"BigGIM_BMG":"http://127.0.0.1:8000/find_path_by_predicate",
         "Aragorn(Trapi v1.4.0)":"https://aragorn.transltr.io/aragorn/query",
@@ -257,12 +257,13 @@ def select_concept(sub_list,obj_list,metaKG):
 # used. Dec 5, 2023 (Example_query_one_hop_with_category.ipynb)
 def get_Translator_API_URL(API_sele, APInames):
     API_URL = []
-
+    #API_URL = {}
     for name in API_sele:
         if name in APInames.keys():
             API_URL.append(APInames[name])
+            #API_URL[name] = APInames[name]
         else:
-            print("API name not found")
+            print(name + " : API name not found")
     return API_URL
 
 # select APIs based on the predicates. Dec 10, 2023
@@ -298,19 +299,20 @@ def select_predicates_inKP(sub_list,obj_list,KPname,metaKG):
     return(final_set)
 
     
-def Generate_Gene_id_map():
-    id_file = open("../metaData/Homo_sapiens.gene_info", "r")
-    Gene_id_map = {}
-    for line in id_file:
-        line = line.strip()
-        Gene_id_map["NCBIGene:"+line.split("\t")[1]] = line.split("\t")[2]
-    id_file.close()
-    return(Gene_id_map)
+#def Generate_Gene_id_map():
+#    id_file = open("../metaData/Homo_sapiens.gene_info", "r")
+#    Gene_id_map = {}
+#    for line in id_file:
+#        line = line.strip()
+#        Gene_id_map["NCBIGene:"+line.split("\t")[1]] = line.split("\t")[2]
+#    id_file.close()
+#    return(Gene_id_map)
 
 # Used. Jan 5, 2024
 def ID_convert_to_preferred_name_nodeNormalizer(id_list):
     dic_id_map = {}
-
+    unrecoglized_ids = []
+    recoglized_ids = []
     # To convert a CURIE to a preferred name, you don't need NameLookup at all -- NodeNorm can
     # do this by itself!
     NODENORM_BASE_URL = "https://nodenorm.transltr.io"  # Adjust this if you need NodeNorm TEST, CI or DEV.
@@ -339,18 +341,22 @@ def ID_convert_to_preferred_name_nodeNormalizer(id_list):
             if curie in results and results[curie]:
                 identifier = results[curie].get('id', {})
                 if 'identifier' in identifier and identifier['identifier'] != curie:
-                    print(f"NodeNorm normalized {curie} to {identifier['identifier']} " +
-                          f"with gene-protein conflation {NODENORM_GENE_PROTEIN_CONFLATION} and " +
-                          f"with drug-chemical conflation {NODENORM_DRUG_CHEMICAL_CONFLATION}.")
+                    recoglized_ids.append(curie)
+                    #print(f"NodeNorm normalized {curie} to {identifier['identifier']} " +
+                    #      f"with gene-protein conflation {NODENORM_GENE_PROTEIN_CONFLATION} and " +
+                    #      f"with drug-chemical conflation {NODENORM_DRUG_CHEMICAL_CONFLATION}.")
                 label = identifier.get('label')
                 dic_id_map[curie] = label
                 if not label:
                     print(curie + ": no preferred name")
                     dic_id_map[curie] = curie
             else:
-                print(curie + ": NodeNorm does not know about this identifier")
+                unrecoglized_ids.append(curie)
+                
                 dic_id_map[curie] = curie
-
+    if len(unrecoglized_ids) > 0:
+        print("NodeNorm does not know about these identifiers: " + ",".join(unrecoglized_ids))
+    
     return dic_id_map
 
 
