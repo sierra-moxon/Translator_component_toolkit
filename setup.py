@@ -6,16 +6,15 @@ setup(
     packages=find_packages(),
     install_requires=[
         # List your library's dependencies here
-        requests,
-        json,
-        pandas,
-        seaborn,
-        matplotlib,
-        ipycytoscape,
-        networkx,
-        numpy,
-        openai,
-        ipycytoscape
+        'requests',
+        'pandas',
+        'seaborn',
+        'matplotlib',
+        'ipycytoscape',
+        'networkx',
+        'numpy',
+        'openai',
+        'ipycytoscape'
     ],
     entry_points={
         'console_scripts': [
