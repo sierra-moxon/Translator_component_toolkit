@@ -74,6 +74,7 @@ def list_Translator_APIs():
         "ARAX Translator Reasoner - TRAPI 1.4.0":"https://arax.transltr.io/api/arax/v1.4/query",
         "RTX KG2 - TRAPI 1.4.0":"https://arax.ncats.io/api/rtxkg2/v1.4/query",
         "SPOKE KP for TRAPI 1.4":"https://spokekp.transltr.io/api/v1.4/query",
+        "Multiomics BigGIM-DrugResponse KP API":"https://bte.transltr.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31/query",
         "Multiomics BigGIM-DrugResponse KP API":"https://bte.test.transltr.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31/query",
         "Multiomics ClinicalTrials KP":"https://api.bte.ncats.io/v1/smartapi/d86a24f6027ffe778f84ba10a7a1861a/query",
         "Multiomics Wellness KP API":"https://api.bte.ncats.io/v1/smartapi/02af7d098ab304e80d6f4806c3527027/query",
@@ -1811,13 +1812,24 @@ def TRAPI_json_validation(query_json_cur_clean, ALL_predicates, ALL_categories):
     return()
 
 def format_id(query_json_cur_clean):
-    input_nodes = query_json_cur_clean['message']['query_graph']['nodes']['n0']['ids']
-    input_node1_id = []
-    for i in input_nodes:
-        input_node1_id.append(get_curie(i))
-    print(input_node1_id)
+    if 'ids' in query_json_cur_clean['message']['query_graph']['nodes']['n0'].keys():
+        input_nodes = query_json_cur_clean['message']['query_graph']['nodes']['n0']['ids']
+        input_node1_id = []
+        if len(input_nodes) > 0:
+            for i in input_nodes:
+                input_node1_id.append(get_curie(i))
+            print(input_node1_id)
 
-    query_json_cur_clean['message']['query_graph']['nodes']['n0']['ids'] = input_node1_id
+        query_json_cur_clean['message']['query_graph']['nodes']['n0']['ids'] = input_node1_id
+
+    if 'ids' in query_json_cur_clean['message']['query_graph']['nodes']['n1'].keys():
+        input_nodes2 = query_json_cur_clean['message']['query_graph']['nodes']['n1']['ids']
+        input_node2_id = []
+        if len(input_nodes2) > 0:
+            for i in input_nodes2:
+                input_node2_id.append(get_curie(i))
+            print(input_node2_id)
+        query_json_cur_clean['message']['query_graph']['nodes']['n1']['ids'] = input_node2_id
     return(query_json_cur_clean)
 
 def query_chatGPT(customized_input, model="gpt-3.5-turbo"):
@@ -1966,17 +1978,20 @@ def get_similar_category(query_json_cur_clean, KG_category):
     similar_category = []
     for word in words:
         if word.startswith('biolink:') :
-            similar_category.append(word)
+            potential_similar_category = word.strip(',').strip(')')
+            if potential_similar_category in KG_category:
+                similar_category.append(potential_similar_category)
 
     for category in query_json_cur_clean['message']['query_graph']['nodes']['n0']['categories']:
-        similar_category.append(category)
+        if category in KG_category:
+            similar_category.append(category)
 
     for category in query_json_cur_clean['message']['query_graph']['nodes']['n1']['categories']:
-        similar_category.append(category)
+        if category in KG_category:
+            similar_category.append(category)
 
-    similar_category = list(set(similar_category))
+    similar_category = similar_category + KG_category
 
-    similar_category
     return similar_category
 
 def get_similar_predicate(query_json_cur_clean, All_predicates):
