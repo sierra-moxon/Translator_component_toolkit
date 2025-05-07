@@ -1,2 +1,7 @@
-./src/__pycache__/TCT.cpython-310.pyc
-./src/__pycache__/TCT.cpython-39.pyc
+*.pyc
+*.db
+.ipynb_checkpoints
+/t
+__pycache__
+/_output
+
