@@ -4,4 +4,8 @@
 /t
 __pycache__
 /_output
-
+*.env
+*.DS_Store
+*.egg-info
+*.egg
+*.log
