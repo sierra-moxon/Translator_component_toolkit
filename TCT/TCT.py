@@ -2171,9 +2171,31 @@ def visulize_path(input_node1_id, intermediate_node, input_node3_id, result, res
 
     forplot = forplot.drop_duplicates()
 
-   
+    # add two columns for forplot named check1 = Subject_name + '::' + Predicates + '::' + Object_name, and check2 = Object_name + '::' + Predicates + '::' + Subject_name
+    # if check1 is equal to check2, then drop one of them
+    forplot['check1'] = forplot['Subject_name'] + '::' + forplot['Predicates'] + '::' + forplot['Object_name']
+    forplot['check2'] = forplot['Object_name'] + '::' + forplot['Predicates'] + '::' + forplot['Subject_name']
+    
+    # check if check1 is equal to check2, if so, drop one of them
+    to_be_dropped = []
+    check1_list = list(forplot['check1'].values)
+    check2_list = list(forplot['check2'].values)
+
+    for i in range(0,len(check1_list)-1):
+        for j in range(i, len(check1_list)):
+            if check1_list[i] == check2_list[j] and check2_list[i] == check1_list[j]:
+                to_be_dropped.append(i)
+                break
+                #break
+    to_be_dropped
+    forplot = forplot.drop(to_be_dropped, axis=0)
+    # remove the check1 and check2 columns
+    forplot = forplot.drop(['check1', 'check2'], axis=1)
+
+    forplot = forplot.reset_index(drop=True)
 
     graph = nx.from_pandas_edgelist(forplot, source='Subject_name', target='Object_name', edge_attr=[ 'Predicates'], create_using=nx.MultiGraph)
+    
     graph_style = [{'selector': 'node[id]',
                              'style': {
                                   'font-family': 'Arial',
