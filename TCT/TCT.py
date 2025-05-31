@@ -10,7 +10,7 @@ import openai
 import matplotlib
 import matplotlib.pyplot as plt
 import ipycytoscape
-
+import yaml
 
 # plt.switch_backend('module://ipykernel.pylab.backend_inline')
 
@@ -20,7 +20,14 @@ from IPython.display import display
 def TCT_help(func):
     print(func.__doc__)
 
-
+# list all functions in TCT
+def list_functions():
+    import inspect
+    functions = []
+    for name, obj in inspect.getmembers(__import__(__name__)):
+        if inspect.isfunction(obj):
+            functions.append(name)
+    return functions
     
 # used. Jan 5, 2024
 def get_Translator_APIs():
@@ -32,9 +39,240 @@ def get_Translator_APIs():
         Translator_APIs.append(app['info']['title'])
     return Translator_APIs
 
+# used May 30, 2025
+# used May 30, 2025
+def get_SmartAPI_Translator_KP_info():
+    """
+    Get the SmartAPI Translator KP info from the smart-api.info API.
+    Returns a DataFrame with the SmartAPI Translator KP info.
+    """
+    
+    import requests
+    import json
+    import yaml
+    import pandas as pd
+
+    # several APIs should be excluded:
+    #https://smart-api.info/ui/ac9c2ad11c5c442a1a1271223468ced1
+
+    # Get x-bte smartapi specs
+    url = "https://smart-api.info/api/query?q=tags.name:translator&size=1000&sort=_seq_no&raw=1&fields=paths,servers,tags,components.x-bte*,info,_meta"
+    response = requests.get(url)
+    try:
+        response.raise_for_status()
+    except Exception:
+        print(f"error downloading smartapi specs: {response.status_code}")
+        exit()
+
+    content = json.loads(response.content)
+    smartapis = content["hits"]
+
+    id_list = []
+    title_list = []
+    prod_url_list = []
+    ci_url_list = []
+    test_url_list = []
+    for api in smartapis:
+        
+        
+        ci_found = False
+        test_found = False
+        prod_found = False
+        for i in range(len(api['servers'])):
+            
+            server = api['servers'][i]
+            if 'x-maturity' not in server:
+                print(f"Skipping server without x-maturity: {server}")
+                
+            else:
+                if server['x-maturity'] == 'production':
+                    # if prod_ur is not ars-prod.transltr.io
+                    if server['url'] == 'https://ars-prod.transltr.io':
+                        prod_url = server['url'] + '/ars/api/submit/'
+                    else:
+                        # if prod_url does not end with /, add '/query/' to the end
+                        if server['url'].endswith('/'):
+                            prod_url = server['url'] + 'query/'
+                        else:
+                            # if prod_url does not end with /, add '/query/' to the end
+                            prod_url = server['url'] + '/query/'
+                    
+                    prod_found = True
+                
+                if server['x-maturity'] == 'staging' or server['x-maturity'] == 'development':
+                    # if ci_url is not ars.ci.transltr.io
+                    if server['url'] == 'https://ars.ci.transltr.io':
+                        ci_url = server['url'] + '/ars/api/submit/'
+                    else:
+                        # if ci_url does not end with /, add '/query/' to the end
+                        if server['url'].endswith('/'):
+                            ci_url = server['url'] + 'query/'
+                        else:
+                            # if ci_url does not end with /, add '/query/' to the end
+                            ci_url = server['url'] + '/query/'
+                    ci_found = True
+
+                if server['x-maturity'] == 'testing':
+                    # if test_url is not ars-test.transltr.io
+                    if server['url'] == 'https://ars.test.transltr.io':
+                        test_url = server['url'] + '/ars/api/submit/'
+                    else:
+                        # if test_url does not end with /, add '/query/' to the end
+                        if server['url'].endswith('/'):
+                            test_url = server['url'] + 'query/'
+                        else:
+                            # if test_url does not end with /, add '/query/' to the end
+                            test_url = server['url'] + '/query/'
+
+                    test_found = True
+
+        if not (prod_found or ci_found or test_found):
+            print(api['info']['title'])
+            print(f"Skipping server without production, staging or testing: {server}")
+        else:
+            id_list.append('https://smart-api.info/ui/'+api['_id'])
+            title_list.append(api['info']['title'])
+            if prod_found:
+                prod_url_list.append(prod_url)
+            else:
+                prod_url = prod_url_list.append(None)
+
+            if ci_found:
+                ci_url_list.append(ci_url)
+            else:
+                ci_url = ci_url_list.append(None)
+            if test_found:
+                test_url_list.append(test_url)
+            else:
+                test_url = test_url_list.append(None)
+                
+    # write all the smartapis to a dataframe
+
+    smartapi_df = pd.DataFrame({
+        'id': id_list,
+        'title': title_list,
+        'prod_url': prod_url_list,
+        'ci_url': ci_url_list,
+        'test_url': test_url_list,
+    })
+    #smartapi_df = smartapi_df.set_index('id')
+
+    # remove the excluded APIs from the dataframe
+    #excluded_APIs = ['https://smart-api.info/ui/ac9c2ad11c5c442a1a1271223468ced1',#RaMP]
+    
+    #smartapi_df = smartapi_df[~smartapi_df['id'].isin(excluded_APIs)]
+
+    API_names = {}
+    for i in range(len(smartapi_df)):
+        if prod_url_list[i] is not None:
+            #API_names[smartapi_df['title'][i]] = smartapi_df['prod_url'][i] + 'query/'
+            API_names[smartapi_df['title'].values[i]] = prod_url_list[i]
+        else:
+            API_names[smartapi_df['title'].values[i]] = ci_url_list[i] 
+    return smartapi_df, API_names
+
 # used Dec 5, 2023 (Example_query_one_hop_with_category.ipynb)
 def list_Translator_APIs():
     APInames = {
+            'Sri-name-resolver':'https://name-lookup.ci.transltr.io/query/', #https://smart-api.info/ui/9995fed757acd034ef099dbb483c4c82 
+            #'Monarch API':'https://api-v3.monarchinitiative.org/query/' #https://smart-api.info/ui/d22b657426375a5295e7da8a303b9893
+            #Complex Portal Web Service : #https://smart-api.info/ui/326eb1e437303bee27d3cef29227125d
+            'Sri-answer-appraiser(Trapi v1.5.0)':'https://answerappraiser.renci.org/get_appraisal/', #https://smart-api.info/ui/6dcc5454fe4e0095090d8a956781c438
+            #LitVar API : dca415f2d792976af9d642b7e73f7a41
+            #CTD API : 0212611d1c670f9107baf00b77f0889a
+            #EBI Proteins API : 43af91b3d7cae43591083bff9d75c6dd
+            #Ontology Lookup Service API : 1c056ffc7ed0dd1229e71c4752239465
+            'Cqs(Trapi v1.5.0)':'https://cqs-dev.apps.renci.org/query/', #https://smart-api.info/ui/c359a127dc8824d90cef436d3dce71d4
+            'Workflow-runner(Trapi v1.5.0)':'https://translator-workflow-runner.renci.org/query/', #https://smart-api.info/ui/6a3507ad6f709844d1b2b89691898a93
+            'Automat-monarchinitiative(Trapi v1.5.0)':'https://automat.ci.transltr.io/monarch-kg/query/',#https://smart-api.info/ui/6b88f83127513bd350e6962218ea84f4
+            #QuickGO API : 1f277e1563fcfd124bfae2cc3c4bcdec
+            #RaMP API v1.0.1 : ac9c2ad11c5c442a1a1271223468ced1 # need to check carefully.
+            'Connections Hypothesis Provider API':'https://chp-api.transltr.io/query/', #https://smart-api.info/ui/412af63e15b73e5a30778aac84ce313f
+            'Automat-genome-alliance(Trapi v1.5.0)' :'https://automat.ci.transltr.io/genome-alliance/query/', #https://smart-api.info/ui/b4c868db33b95b4890faeeefd5800552
+            'mediKanren' : 'https://medikanren-trapi.transltr.io/query/', #https://smart-api.info/ui/c563a58be4aacb68d10ba0ceb6b52255
+            'Automat-hgnc(Trapi v1.5.0)':'https://automat.transltr.io/hgnc/query/', #'https://smart-api.info/ui/8671309d2b94e413a4c1f9a9f82e4660'
+            'Automat-hmdb(Trapi v1.5.0)':'https://automat.transltr.io/hmdb/query/' ,# 0a1c0f46f4950b82b1aa7dad27aad10a
+            'Automat-gwas-catalog(Trapi v1.5.0)' :'https://automat.transltr.io/gwas-catalog/query/', #349fed5531c094c33f10c071efe9d0de
+            'Automat-gtopdb(Trapi v1.5.0)': 'https://automat.transltr.io/gtopdb/query/',# 759df287a21c30cd514df323be02a84b
+            'Autonomous Relay System (ARS) TRAPI' : 'https://ars-prod.transltr.io/ars/api/submit/', #4c12efd48ced755ac4b72b1922202ec2
+            'Automat-robokop(Trapi v1.5.0)' : 'https://automat.transltr.io/robokopkg/query/',# 4f9c8853b721ef1f14ecee6d92fc19b5
+            'Automat-binding-db(Trapi v1.5.0)': 'https://automat.transltr.io/binding-db/query/', #a9d6ee341d8ea4c7d3ae9ed0941cb274
+            'Automat-ehr-may-treat-kp(Trapi v1.5.0)' : 'https://automat.renci.org/ehr-may-treat-kp/query/',#eb4e66886fe5c178ae41977cea2c6307
+            #Automat-gtex(Trapi v1.5.0) : eef72049e4e01c020b7799f711e0e65b,
+            #Automat-pharos(Trapi v1.5.0) : 1f057c53d42694686369f0e542f965c6
+            #Automat-reactome(Trapi v1.5.0) : 61b41c5d9b90eb8ad16e037f9a87d593
+            #Sri-node-normalizer(Trapi v1.5.0) : 1c2eb8d02b4796c6a657c3363c0657dc
+            #Automat-human-goa(Trapi v1.5.0) : cb7a43d444cb3dcbe8e3c78d314334cf
+            #Automat-cam-kp(Trapi v1.5.0) : 7ab0209ea8590341d8e5d0166cac3d2f
+            #Automat-viral-proteome(Trapi v1.5.0) : 2aca41fc6c3dc426ec6583d42603be02
+            #Aragorn(Trapi v1.5.0) : 1dad992a6ce8f680e59a5ea09d90670d
+            #Automat-drug-central(Trapi v1.5.0) : 673b9fc76973dfa5fe3ed151fdbfc807
+            #Automat-ubergraph(Trapi v1.5.0) : dde0552a37fc136526216148ff7594a0
+            #Automat-string-db(Trapi v1.5.0) : 7984a621a28c109c5c09f65fed0e7ea7
+            #Automat-hetionet(Trapi v1.5.0) : a5fe24f987331b58191e67598118f369
+            #Automat-ctd(Trapi v1.5.0) : f82c01b15c46e024212c1a3271aaef0b
+            #Automat-intact(Trapi v1.5.0) : b4023595664163e0aec5e825da150e16
+            #Automat-ehr-clinical-connections-kp(Trapi v1.5.0) : 6f4dd91bc56fce4f597bc44153cf418e
+            #Automat-icees-kg(Trapi v1.5.0) : c64d583402f21cc85810d33befe49c86
+            #Automat-panther(Trapi v1.5.0) : 3f78d3fb8a7a577fbc7cc0a913ac3fc5
+            #Biolink Lookup : 02f84c50043e94970316568439b7b384
+            'COHD TRAPI' : 'https://cohd-api.transltr.io/api/query/', ##d4290b6b5741e6da6cc6a6f42e0cfdb5
+            #'Text Mined Cooccurrence API' : "https://cooccurence.ci.transltr.io/query/", #aa9c668df9d217409891cc7afb7ac039
+            'Text Mined Cooccurrence API' : "https//cooccurrence.transltr.io/query", #71fa2e0f0f1fe1ec67f4ddb719db5ef3
+            #BioThings Rhea API : 03283cc2b21c077be6794e1704b1d230
+            #SmartAPI API : 27a5b60716c3a401f2c021a5b718c5b1
+            #MyDisease.info API : 671b45c0301c8624abbd26ae78449ca2
+            #MyVariant.info API : 09c8782d9f4027712e65b95424adba79
+            #BioThings UBERON API : ec6d76016ef40f284359d17fbf78df20
+            #OpenPredict API : 025600054bd8d6fb14ee66ee9d4a9830
+            #MyGene.info API : 59dce17363dce279d389100834e43648
+            #Answer-coalesce(Trapi v1.5.0) : fe8bb783ff710ab4e176f38c5f7777af
+            #BioThings HPO API : a5b0ec6bfde5008984d4b6cde402d61f
+            #Drug Approvals KP - TRAPI 1.5.0 : edc04feaf16c12424737988ce2e90d60
+            #Gene-List Network Enrichment Analysis : 5c8740542b4444d4f85c2e23c670b952
+            #MolePro : 1901bab8d33bb70b124f400ec1cfdba3
+            #Multiomics KP - TRAPI 1.5.0 : 1b6de23ed3c4e0713b20794477ba1e39
+            #Microbiome KP - TRAPI 1.5.0 : a8be4ea3fe8fa80a952ead0b3c5e4bc1
+            #BioThings GO Biological Process API : cc857d5b7c8b7609b5bbb38ff990bfff
+            #imProving Agent for TRAPI 1.5 : 415c3b1a85ead4ceb58caf00dee9b24e
+            #Clinical Trials KP - TRAPI 1.5.0 : e51073371d7049b9643e1edbdd61bcbd
+            #BioThings EBIgene2phenotype API : 1f47552dabd67351d4c625adb0a10d00
+            #BioThings RARe-SOURCE API : b772ebfbfa536bba37764d7fddb11d6f
+            #PharmGKB REST API : bde72db681ec0b8f9eeb67bb6b8dd72c
+            #BioThings DDInter API : 00fb85fc776279163199e6c50f6ddfc6
+            #MyChem.info API : 8f08d1446e0bb9c2b323713ce83e2bd3
+            #BioThings BindingDB API : 38e9e5169a72aee3659c9ddba956790d
+            #BioThings PFOCR API : edeb26858bd27d0322af93e7a9e08761
+            #BioThings MGIgene2phenotype API : 77ed27f111262d0289ed4f4071faa619
+            #BioThings FooDB API : f1b8f64c316a01d1722f0fb842499fe5
+            #Genetics Data Provider for NCATS Biomedical Translator Reasoners : db981dff8d93dcb0cfab5dbee8afbb40
+            #BioThings GO Molecular Function API : 34bad236d77bea0a0ee6c6cba5be54a6
+            #BioThings BioPlanet Pathway-Disease API : 55a223c6c6e0291dbd05f2faf27d16f4
+            #BioThings DISEASES API : a7f784626a426d054885a5f33f17d3f8
+            #BioThings BioPlanet Pathway-Gene API : b99c6dd64abcefe87dcd0a51c249ee6d
+            #BioThings GO Cellular Component API : f339b28426e7bf72028f60feefcd7465
+            #SPOKE KP for TRAPI 1.5 : 7f70cdfaeb801501da08dacc294e8b9f
+            #BioThings IDISK API : 32f36164fabed5d3abe6c2fd899c9418
+            #BioThings FoodData Central API : 895ec14a3650ec7ad85959a2d1554e2f
+            #BioThings AGR API : 68f12100e74342ae0dd5013d5f453194
+            #Translator Annotation Service : 5a4c41bf2076b469a0e9cfcf2f2b8f29
+            #BioThings InnateDB API : e9eb40ff7ad712e4e6f4f04b964b5966
+            #BioThings repoDB API : 1138c3297e8e403b6ac10cff5609b319
+            #BioThings GTRx API : 316eab811fd9ef1097df98bcaa9f7361
+            #BioThings Explorer (BTE) TRAPI : dc91716f44207d2e1287c727f281d339
+            #RTX KG2 - TRAPI 1.5.0 : a6b575139cfd429b0a87f825a625d036
+            #BioThings SuppKG API : b48c34df08d16311e3bca06b135b828d
+            #Knowledge Collaboratory API : 8601da411b8681dbbc32239ceb0f1a55
+            ##Service Provider TRAPI : 36f82f05705c317bac17ddae3a0ea2f0
+            #Multiomics EHR Risk KP API : d86a24f6027ffe778f84ba10a7a1861a
+            #Multiomics Wellness KP API : 02af7d098ab304e80d6f4806c3527027
+            #BioThings DGIdb API : e3edd325c76f2992a111b43a907a4870
+            #BioThings SEMMEDDB API : 1d288b3a3caf75d541ffaae3aab386c8
+            'Multiomics BigGIM-DrugResponse KP API' : 'https://biothings.ci.transltr.io/biggim_drugresponse_kg/query/', #adf20dd6ff23dfe18e8e012bde686e31
+            #Biothings Therapeutic Target Database API : e481efd21f8e8c1deac05662439c2294
+            #Text Mining Targeted Association API : 978fe380a147a8641caf72320862697b
+           'ARAX Translator Reasoner - TRAPI 1.5.0' : 'https://arax.transltr.io/api/arax/v1.4/query/', # 03e63fbd5ed251bce08cb5801b6b169b
+
         'Automat-ctd(Trapi v1.4.0)':"https://automat.transltr.io/ctd/1.4/query",
         #'Automat-sri-reference-kg(Trapi v1.4.0)':"",
         #'Autonomous Relay System (ARS) TRAPI':"",
@@ -75,7 +313,7 @@ def list_Translator_APIs():
         "RTX KG2 - TRAPI 1.4.0":"https://arax.ncats.io/api/rtxkg2/v1.4/query",
         "SPOKE KP for TRAPI 1.4":"https://spokekp.transltr.io/api/v1.4/query",
         "Multiomics BigGIM-DrugResponse KP API":"https://bte.transltr.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31/query",
-        "Multiomics BigGIM-DrugResponse KP API":"https://bte.test.transltr.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31/query",
+        #"Multiomics BigGIM-DrugResponse KP API":"https://bte.test.transltr.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31/query",
         "Multiomics ClinicalTrials KP":"https://api.bte.ncats.io/v1/smartapi/d86a24f6027ffe778f84ba10a7a1861a/query",
         "Multiomics Wellness KP API":"https://api.bte.ncats.io/v1/smartapi/02af7d098ab304e80d6f4806c3527027/query",
         "Multiomics EHR Risk KP API":"https://api.bte.ncats.io/v1/smartapi/d86a24f6027ffe778f84ba10a7a1861a/query",
@@ -109,7 +347,6 @@ def list_Translator_APIs():
         "Automat-ubergraph(Trapi v1.4.0)": "https://automat.ci.transltr.io/ubergraph/1.4/query",
         "Automat-ubergraph-nonredundant(Trapi v1.4.0)": "https://automat.ci.transltr.io/ubergraph-nonredundant/1.4/query",
         "Automat-viral-proteome(Trapi v1.4.0)": "https://automat.ci.transltr.io/viral-proteome/1.4/query",
-        #"COHD TRAPI":"https://cohd-api.transltr.io/api/query", # 500 error
         "CTD API":"https://automat.ci.transltr.io/ctd/1.4/query",
         "Connections Hypothesis Provider API":"https://chp-api.transltr.io/query", #no knowledge_graph is defined in the response
         "MyGene.info API":"https://api.bte.ncats.io/v1/smartapi/59dce17363dce279d389100834e43648/query", #check with chunlei
@@ -191,8 +428,8 @@ def get_KP_metadata(APInames):
         json_text ={}
         if KP == "RTX KG2 - TRAPI 1.4.0": 
             #print("ARAX KG2 - TRAPI 1.4.0")
-            text =requests.get("https://dev.smart-api.info/api/metakg/consolidated?size=20&q=%28api.x-translator.component%3AKP+AND+api.name%3ARTX+KG2+%5C-+TRAPI+1%5C.4%5C.0%29").text  # This works for the previous version
-            #text =requests.get("https://smart-api.info/api/metakg/consolidated?size=20&q=%28api.x-translator.component%3AKP+AND+api.name%3ARTX+KG2+%5C-+TRAPI+1%5C.4%5C.0%29").text  # This works for the previous version
+            #text =requests.get("https://dev.smart-api.info/api/metakg/consolidated?size=20&q=%28api.x-translator.component%3AKP+AND+api.name%3ARTX+KG2+%5C-+TRAPI+1%5C.4%5C.0%29").text  # This works for the previous version
+            text =requests.get("https://smart-api.info/api/metakg/consolidated?size=20&q=%28api.x-translator.component%3AKP+AND+api.name%3ARTX+KG2+%5C-+TRAPI+1%5C.4%5C.0%29").text  # This works for the previous version
             json_text = json.loads(text)
         else:
             text = requests.get(find_link(KP)).text
@@ -597,12 +834,15 @@ def plot_heatmap(predicates_by_nodes_df,num_of_nodes = 20,
     df = predicates_by_nodes_df.iloc[:,0:num_of_nodes]
     colnames = list(df.columns)
     # create teh figure and subplot
-    fig = plt.figure( figsize=(0.8+df.shape[1]*0.1,3.5),dpi = 300)
+    fig = plt.figure( figsize=(0.8+df.shape[1]*0.11,3.5),dpi = 300)
     ax = fig.add_subplot(111)
 
     # create the heatmap
     # heatmap with border
     p1 = sns.heatmap(df, cmap="Blues", cbar=False, ax=ax, linecolor='grey', linewidth=0.2)
+    # Adjust font size for x and y tick labels
+    p1.set_xticklabels(p1.get_xticklabels(), rotation=90, fontsize=fontsize)
+    p1.set_yticklabels(p1.get_yticklabels(), fontsize=fontsize)
 
     p1.set_title(title)
     p1.set_ylabel(ylab)
