@@ -56,7 +56,7 @@ def get_SmartAPI_Translator_KP_info():
     #https://smart-api.info/ui/ac9c2ad11c5c442a1a1271223468ced1
 
     # Get x-bte smartapi specs
-    url = "https://smart-api.info/api/query?q=tags.name:translator&size=1000&sort=_seq_no&raw=1&fields=paths,servers,tags,components.x-bte*,info,_meta"
+    url = "https://smart-api.info/api/query?q=tags.name:translator AND tags.name:trapi&size=1000&sort=_seq_no&raw=1&fields=paths,servers,tags,components.x-bte*,info,_meta"
     response = requests.get(url)
     try:
         response.raise_for_status()
