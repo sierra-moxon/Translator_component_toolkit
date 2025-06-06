@@ -32,8 +32,11 @@ Example notebook for translating users' questions into TRAPI queries can be foun
 
 #### Connecting to a user's API
 API should be developed following the standard from [TRAPI](https://github.com/NCATSTranslator/ReasonerAPI). <br>
-An example notebook for add a user's API can be find [here](./notebooks/Connecting_userAPI.ipynb).<br>
+An example notebook for add a user's API can be found [here](./notebooks/Connecting_userAPI.ipynb).<br>
 **Warning: It does not work if no user' API is established**<br>
+
+## Key Translator components
+Connecting to key Translator components can be found [here](./TranslatorComponentsIntroduction.md)
 
 ## Contributing
 TCT is a tool that helps to explore knowledge graphs developed in the Biomedical Data Translator Consortium. Consortium members and external contributors are encouraged to submit issues and pull requests. 
