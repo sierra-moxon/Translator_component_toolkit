@@ -36,7 +36,7 @@ An example notebook for add a user's API can be found [here](./notebooks/Connect
 **Warning: It does not work if no user' API is established**<br>
 
 ## Key Translator components
-Connecting to key Translator components can be found [here](.TranslatorComponensIntroduction.md)
+Connecting to key Translator components can be found [here](./TranslatorComponentsIntroduction.md)
 
 ## Contributing
 TCT is a tool that helps to explore knowledge graphs developed in the Biomedical Data Translator Consortium. Consortium members and external contributors are encouraged to submit issues and pull requests. 
