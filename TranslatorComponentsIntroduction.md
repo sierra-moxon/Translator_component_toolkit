@@ -11,7 +11,7 @@
 ##### TCT link: https://github.com/NCATSTranslator/Translator_component_toolkit. 
 ----------------------------------------------------------------------------------------------------
 #### Biolink:
-##### Tree-viz-biolink: http://tree-viz-biolink.herokuapp.com/
+##### Tree-viz-biolink: https://biolink.github.io/biolink-model/categories.html
 ##### Biolink repo: https://biolink.github.io/biolink-model/
 ##### Biolink Model Toolkit: A python library for working with the biolink-model. The BMT codebase is available at https://github.com/biolink/biolink-model-toolkit and the latest releases are available on https://pypi.org/project/bmt/. 
 ----------------------------------------------------------------------------------------------------
