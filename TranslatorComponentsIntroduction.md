@@ -11,9 +11,11 @@
 ##### TCT link: https://github.com/NCATSTranslator/Translator_component_toolkit. 
 ----------------------------------------------------------------------------------------------------
 #### Biolink:
-##### Tree-viz-biolink: http://tree-viz-biolink.herokuapp.com/
+##### Tree-viz-biolink: https://biolink.github.io/biolink-model/categories.html
 ##### Biolink repo: https://biolink.github.io/biolink-model/
-##### Biolink Model Toolkit: A python library for working with the biolink-model. The BMT codebase is available at https://github.com/biolink/biolink-model-toolkit and the latest releases are available on https://pypi.org/project/bmt/. 
+##### Biolink Model Toolkit (BMT): A python library for working with the biolink-model.
+##### BMT codebase: https://github.com/biolink/biolink-model-toolkit 
+##### Latest release: https://pypi.org/project/bmt/ 
 ----------------------------------------------------------------------------------------------------
 ####  Knolwedge source related:
 ##### KGX_format: KGX is a format for distributing Biolink-compliant knowledge graphs. 
@@ -29,7 +31,7 @@
 ##### TRAPI standard repo: https://github.com/NCATSTranslator/ReasonerAPI. 
 ----------------------------------------------------------------------------------------------------
 ##### TRAPI validator: A python library of methods to validate TRAPI and Biolink Model compliance of biomedical data processing software. It would be useful for developers of Biolink Model components accessed using TRAPI web services. Key functions include: given a TRAPI response (or comparable knowledge query inputs), validates compliance to TRAPI and Biolink Model standards (current release or user specified releases of the standards). 
-##### TRAPI validator: (https://github.com/NCATSTranslator/reasoner-validator)
+##### TRAPI validator link: https://github.com/NCATSTranslator/reasoner-validator
 ----------------------------------------------------------------------------------------------------
 #### Translator APIs:
 ##### Translator KG APIs are a set of APIs that follows the TRAPI standard and biolink standard to explore underline biomedical knowledge graphs. 
