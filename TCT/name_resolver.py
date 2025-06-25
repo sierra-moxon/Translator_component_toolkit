@@ -72,7 +72,7 @@ def lookup(query: str, return_top_response:bool=True, return_synonyms:bool=False
                     all_nodes.append(n)
                 return all_nodes
     else:
-        raise requests.RequestException('Response from server had error, code ' + str(response.status_code))
+        raise requests.RequestException('Response from server had error, code ' + str(response.status_code) + ' ' + str(response))
 
 
 def synonyms(query: str, **kwargs):
@@ -92,7 +92,7 @@ def synonyms(query: str, **kwargs):
     """
     path = urllib.parse.urljoin(URL, 'synonyms')
     # set autocomplete to be false by default
-    response = requests.get(path, params={'string': query, **kwargs})
+    response = requests.get(path, params={'preferred_curies': query, **kwargs})
     if response.status_code == 200:
         result = response.json()
         if len(result) == 0:
@@ -111,6 +111,4 @@ def synonyms(query: str, **kwargs):
                 all_nodes[k] = n
             return all_nodes
     else:
-        raise requests.RequestException('Response from server had error, code ' + str(response.status_code))
-
-
+        raise requests.RequestException('Response from server had error, code ' + str(response.status_code) + ' ' + str(response))

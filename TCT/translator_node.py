@@ -16,6 +16,9 @@ class TranslatorNode:
     "list of biolink types"
     types: list[str] | None = None
 
+    # TODO: add quantifiers/qualifiers?
+    # TODO: add edges too?
+
     "list of synonymous labels"
     synonyms: list[str] | None = None
 
@@ -33,4 +36,3 @@ class TranslatorNode:
         """identifier is the CURIE id for the node."""
         self.curie = i
 
-    # TODO: add edges too?
