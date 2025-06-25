@@ -22,15 +22,21 @@ def lookup(query: str, return_top_response:bool=True, return_synonyms:bool=False
     query : str
         Query string
     return_top_response : bool
-        If true, this returns only the top response. If false, this returns a list of all responses.
+        If true, this returns only the top response. If false, this returns a list of all responses. Default: True
     return_synonyms : bool
-        If true, the resulting TranslatorNode objects contain a list of synonyms. If false, they do not include synonyms.
+        If true, the resulting TranslatorNode objects contain a list of synonyms. If false, they do not include synonyms. Default: False
     **kwargs
         Other arguments to `lookup`
 
     Returns
     -------
     TranslatorNode object if return_top_response is True, list of TranslatorNode objects if return_top_response is False
+
+    Examples
+    --------
+    >>> lookup('AML')
+    TranslatorNode(curie='MONDO:0018874', label='acute myeloid leukemia', types=['biolink:Disease', 'biolink:DiseaseOrPhenotypicFeature', 'biolink:BiologicalEntity', 'biolink:ThingWithTaxon', 'biolink:NamedThing', 'biolink:Entity'], synonyms=None, curie_synonyms=None)
+
     """
     path = urllib.parse.urljoin(URL, 'lookup')
     # set autocomplete to be false by default
