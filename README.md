@@ -1,4 +1,5 @@
-# Translator component toolkit (TCT)
+Translator component toolkit (TCT)
+==================================
 
 ## What is TCT?
 Translator Component Toolkit is a python library that allowing users to explore and use KGs in the Translator ecosystems. 
