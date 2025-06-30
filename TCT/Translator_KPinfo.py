@@ -8,7 +8,7 @@ import pandas as pd
 """This is the root URL for the resource."""
 URL = 'https://smart-api.info/api/query?q=tags.name:translator'
 
-def get_Translator_KP_info():
+def get_translator_kp_info():
     """
     Get the SmartAPI Translator KP info from the smart-api.info API.
     Returns a DataFrame with the SmartAPI Translator KP info.
