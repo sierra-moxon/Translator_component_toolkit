@@ -31,6 +31,13 @@ def list_functions():
     
 # used. Jan 5, 2024
 def get_Translator_APIs():
+    '''
+    Get a list of Translator APIs from the smart-api.info and return the detailed information for each API in a data frame and the list of API names.
+
+    Examples
+    --------
+    >>> Translator_KP_info,APInames= TCT.get_SmartAPI_Translator_KP_info() 
+    '''
     Translator_APIs = []
     #Translator_apps_url = "https://smart-api.info/api/query?q=tags.name:translator&fields=info,_meta,tags&meta=1&size=500"
     Translator_apps_url = "https://dev.smart-api.info/api/query?q=tags.name:translator&fields=info,_meta,tags&meta=1&size=500"
@@ -45,6 +52,10 @@ def get_SmartAPI_Translator_KP_info():
     """
     Get the SmartAPI Translator KP info from the smart-api.info API.
     Returns a DataFrame with the SmartAPI Translator KP info.
+    Examples
+    --------
+    >>> get_SmartAPI_Translator_KP_info('AML')
+
     """
     
     import requests
