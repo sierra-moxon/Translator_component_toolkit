@@ -1,4 +1,5 @@
-# Translator component toolkit (TCT)
+Translator component toolkit (TCT)
+==================================
 
 ## What is TCT?
 Translator Component Toolkit is a python library that allowing users to explore and use KGs in the Translator ecosystems. 
@@ -13,8 +14,8 @@ Connecting large language models to convert user's questions into TRAPI queries.
 
 ## How to use TCT
 ### Install Requirments
-Follow the **[requirements](./requirements.txt)** to be able to run all the notebooks.  
-pip install -r requirements.txt
+
+To install TCT as a python library, first clone this repository, and then run `pip install -e .` from this folder.
 
 ### Please follow the example notebooks (three utilities) below to explore the Translator APIs.
 
