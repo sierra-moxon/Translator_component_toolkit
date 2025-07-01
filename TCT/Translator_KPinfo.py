@@ -15,8 +15,8 @@ def get_translator_kp_info():
 
     Examples
     --------
-    >>> Translator_KP_info,APInames = get_SmartAPI_Translator_KP_info('AML')
-
+    >>> Translator_KP_info,APInames = get_SmartAPI_Translator_KP_info()
+    >>> print(Translator_KP_info.head())
     """
     
    
