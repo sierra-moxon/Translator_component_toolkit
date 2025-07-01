@@ -2,7 +2,8 @@ Translator component toolkit (TCT)
 ==================================
 
 ## What is TCT?
-Translator Component Toolkit is a python library that allowing users to explore and use KGs in the Translator ecosystems. 
+Translator Component Toolkit is a python library that allowing users to explore and use KGs in the Translator ecosystems.
+Users can check out the key functions here: https://gloriachin.github.io/Translator_component_toolkit/ 
 
 ## Key features for TCT
 Allowing users to select APIs, predicates according to the user's intention. <br>
