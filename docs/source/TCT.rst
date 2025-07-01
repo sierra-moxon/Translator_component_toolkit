@@ -1,4 +1,4 @@
-TCT miscellaneous functions
+TCT utility functions
 ===========================
 .. automodule:: TCT.TCT
    :members:

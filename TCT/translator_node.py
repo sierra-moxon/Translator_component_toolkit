@@ -36,3 +36,17 @@ class TranslatorNode:
         """identifier is the CURIE id for the node."""
         self.curie = i
 
+@dataclass
+class TranslatorEdge:
+    """
+    Class that represents Translator edges.
+    """
+
+    "The subject is a CURIE id for a node."
+    subject: str
+
+    "The object is a CURIE id for a node."
+    object: str
+
+    "Predicates"
+    predicate: str
