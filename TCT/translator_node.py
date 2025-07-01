@@ -7,23 +7,23 @@ class TranslatorNode:
     Class for Translator graph nodes.
     """
 
-    "CURIE identifier"
     curie: str
+    "CURIE identifier"
 
-    "name"
     label: str | None = None
+    "human-readable name for the node"
 
-    "list of biolink types"
     types: list[str] | None = None
+    "list of biolink types"
 
     # TODO: add quantifiers/qualifiers?
     # TODO: add edges too?
 
-    "list of synonymous labels"
     synonyms: list[str] | None = None
+    "list of synonymous labels"
 
-    "list of synonymous CURIE ids (in the same order as synonyms)"
     curie_synonyms: list[str] | None = None
+    "list of synonymous CURIE ids (in the same order as synonyms)"
 
     # identifier is just another way to access/set the CURIE.
     @property
@@ -42,11 +42,11 @@ class TranslatorEdge:
     Class that represents Translator edges.
     """
 
-    "The subject is a CURIE id for a node."
     subject: str
+    "The subject is a CURIE id for a node."
 
-    "The object is a CURIE id for a node."
     object: str
+    "The object is a CURIE id for a node."
 
-    "Predicates"
     predicate: str
+    "Predicates"
