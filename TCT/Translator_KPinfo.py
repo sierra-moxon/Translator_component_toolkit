@@ -19,9 +19,6 @@ def get_translator_kp_info():
     >>> print(Translator_KP_info.head())
     """
     
-   
-    # several APIs should be excluded:
-    #https://smart-api.info/ui/ac9c2ad11c5c442a1a1271223468ced1
 
     # Get x-bte smartapi specs
     url = "https://smart-api.info/api/query?q=tags.name:translator AND tags.name:trapi&size=1000&sort=_seq_no&raw=1&fields=paths,servers,tags,components.x-bte*,info,_meta"
@@ -123,13 +120,7 @@ def get_translator_kp_info():
         'ci_url': ci_url_list,
         'test_url': test_url_list,
     })
-    #smartapi_df = smartapi_df.set_index('id')
-
-    # remove the excluded APIs from the dataframe
-    #excluded_APIs = ['https://smart-api.info/ui/ac9c2ad11c5c442a1a1271223468ced1',#RaMP]
     
-    #smartapi_df = smartapi_df[~smartapi_df['id'].isin(excluded_APIs)]
-
     API_names = {}
     for i in range(len(smartapi_df)):
         if prod_url_list[i] is not None:
