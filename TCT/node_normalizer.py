@@ -31,7 +31,7 @@ def get_normalized_nodes(query: str | list[str],
     -------
     If query is a single CURIE, returns a single TranslatorNode.
 
-    If query is a list of CURIEs, a dict of CURIE id : TranslatorNode for every node in the query.
+    If query is a list of CURIEs, a dict of CURIE id to TranslatorNode for every node in the query.
 
     Examples
     --------
