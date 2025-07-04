@@ -48,13 +48,19 @@ def get_Translator_APIs():
 
 # used May 30, 2025
 # used May 30, 2025
+"""This is the root URL for the resource."""
+URL = 'https://smart-api.info/api/query?q=tags.name:translator'
+
 def get_SmartAPI_Translator_KP_info():
     """
     Get the SmartAPI Translator KP info from the smart-api.info API.
     Returns a DataFrame with the SmartAPI Translator KP info.
+
+    
+
     Examples
     --------
-    >>> get_SmartAPI_Translator_KP_info('AML')
+    >>> Translator_KP_info,APInames = get_SmartAPI_Translator_KP_info('AML')
 
     """
     

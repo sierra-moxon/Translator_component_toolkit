@@ -1,4 +1,4 @@
-Translator component toolkit (TCT)
+Introduction
 ==================================
 
 ## What is TCT?
@@ -12,6 +12,12 @@ Providing reproducible results by setting contraints.<br>
 Allowing testing whether a user defined API follows a [TRAPI](https://github.com/NCATSTranslator/ReasonerAPI) standard or not. <br>
 Faciliting to explore knowledge graphs from both Translator ecosystem and user defined APIs.<br>
 Connecting large language models to convert user's questions into TRAPI queries. <br>
+
+### Contributing
+TCT is a tool that helps to explore knowledge graphs developed in the Biomedical Data Translator Consortium. Consortium members and external contributors are encouraged to submit issues and pull requests. 
+
+### Contact info
+Guangrong Qin, guangrong.qin@isbscience.org
 
 ## How to use TCT
 ### Install Requirments
@@ -40,8 +46,3 @@ An example notebook for add a user's API can be found [here](./notebooks/Connect
 ## Key Translator components
 Connecting to key Translator components can be found [here](./TranslatorComponentsIntroduction.md)
 
-## Contributing
-TCT is a tool that helps to explore knowledge graphs developed in the Biomedical Data Translator Consortium. Consortium members and external contributors are encouraged to submit issues and pull requests. 
-
-## Contact info
-Guangrong Qin, guangrong.qin@isbscience.org
