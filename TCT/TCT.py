@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import ipycytoscape
 import networkx as nx
 import numpy as np
-import openai
 import matplotlib
 import matplotlib.pyplot as plt
 import ipycytoscape
@@ -430,7 +429,11 @@ def find_link(name):
 def get_KP_metadata(APInames):
 
     '''
-    APInames = get_API_list()
+    This function is used to get the metadata of the KPs in the APInames dictionary.
+    Example:
+    >>> metaKG = TCT.get_KP_metadata(APInames) 
+    >>> All_predicates = list(set(metaKG['KG_category']))
+    All_categories = list((set(list(set(metaKG['Subject']))+list(set(metaKG['Object'])))))
     '''
 
     result_df = pd.DataFrame()
@@ -443,14 +446,11 @@ def get_KP_metadata(APInames):
     #for KP in KPnames:
     for KP in APInames.keys():
         json_text ={}
-        if KP == "RTX KG2 - TRAPI 1.4.0": 
-            #print("ARAX KG2 - TRAPI 1.4.0")
-            #text =requests.get("https://dev.smart-api.info/api/metakg/consolidated?size=20&q=%28api.x-translator.component%3AKP+AND+api.name%3ARTX+KG2+%5C-+TRAPI+1%5C.4%5C.0%29").text  # This works for the previous version
+        if KP == "RTX KG2 - TRAPI 1.5.0": 
             text =requests.get("https://smart-api.info/api/metakg/consolidated?size=20&q=%28api.x-translator.component%3AKP+AND+api.name%3ARTX+KG2+%5C-+TRAPI+1%5C.4%5C.0%29").text  # This works for the previous version
             json_text = json.loads(text)
-        else:
+        else:   
             text = requests.get(find_link(KP)).text
-            #text = requests.get(dic_KP_metadata[KP]).text
             json_text = json.loads(text)
 
         for i in (json_text['hits']):
@@ -461,10 +461,10 @@ def get_KP_metadata(APInames):
             url_list.append(APInames[KP])
 
     result_df = pd.DataFrame({ 'API': API_list, 'KG_category': KG_category_list, "Subject":subject_list, "Object":object_list, "URL":url_list})
-    #result_df.to_csv("KP_metadata.csv", index=False)
+    
     return(result_df)
 
-# used
+
 def add_new_API_for_query(APInames, metaKG, newAPIname, newAPIurl, newAPIcategory, newAPIsubject, newAPIobject):
 
     '''
@@ -479,6 +479,73 @@ def add_new_API_for_query(APInames, metaKG, newAPIname, newAPIurl, newAPIcategor
                             "Subject":newAPIsubject, "Object":newAPIobject,
                             "URL":newAPIurl}, index=[0])
     metaKG = pd.concat([metaKG, new_row], ignore_index=True)
+    return APInames, metaKG
+
+
+def add_plover_API(APInames, metaKG):
+    '''
+    This function is used to add the Plover APIs developed by the CATRAX team to the APInames and metaKG.
+    Current APIs include :
+    CATRAX BigGIM DrugResponse Performance Phase, 
+    CATRAX Pharmacogenomics, 
+    Clinical Trials, 
+    Drug Approvals, 
+    Multiomics, 
+    Microbiome, 
+    and RTX KG2.
+    
+    Example: 
+    >>> APInames, metaKG = add_plover_API(APInames, metaKG)
+    '''
+    
+
+    import requests
+    url = 'https://multiomics.rtx.ai:9990/BigGIM_DrugResponse_PerformancePhase/meta_knowledge_graph'
+    response = requests.get(url)
+    data = response.json()
+    for i in range(len(data["edges"])):
+        APInames, metaKG = add_new_API_for_query(APInames, metaKG, "CATRAX BigGIM DrugResponse Performance Phase KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/BigGIM_DrugResponse_PerformancePhase/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
+
+        url = 'https://multiomics.rtx.ai:9990/PharmacogenomicsKG/meta_knowledge_graph'
+        response = requests.get(url)
+        data = response.json()
+        for i in range(len(data["edges"])):
+            APInames, metaKG = add_new_API_for_query(APInames, metaKG, "CATRAX Pharmacogenomics KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/PharmacogenomicsKG/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
+
+    url = 'https://multiomics.rtx.ai:9990/ctkp/meta_knowledge_graph'
+    response = requests.get(url)
+    data = response.json()
+
+    for i in range(len(data["edges"])):
+        APInames, metaKG = add_new_API_for_query(APInames, metaKG, "Clinical Trials KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/ctkp/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
+
+    url = 'https://multiomics.rtx.ai:9990/dakp/meta_knowledge_graph'
+    response = requests.get(url)
+    data = response.json()
+    for i in range(len(data["edges"])):
+        APInames, metaKG = add_new_API_for_query(APInames, metaKG, "Drug Approvals KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/dakp/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
+
+    url = 'https://multiomics.rtx.ai:9990/dakp/meta_knowledge_graph'
+    response = requests.get(url)
+    data = response.json()
+    for i in range(len(data["edges"])):
+        APInames, metaKG = add_new_API_for_query(APInames, metaKG, "Multiomics KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/multiomics/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
+
+    url = 'https://multiomics.rtx.ai:9990/mokp/meta_knowledge_graph'
+    response = requests.get(url)
+    data = response.json()
+    for i in range(len(data["edges"])):
+        APInames, metaKG = add_new_API_for_query(APInames, metaKG, "Microbiome KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/mbkp/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
+
+
+    url = 'https://kg2cploverdb.ci.transltr.io/kg2c/meta_knowledge_graph'
+    response = requests.get(url)
+    data = response.json()
+    for i in range(len(data["edges"])):
+        APInames, metaKG = add_new_API_for_query(APInames, metaKG, "RTX KG2 - TRAPI 1.5.0", "https://kg2cploverdb.ci.transltr.io/kg2c/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
+
+
+    
     return APInames, metaKG
 
 # used. Dec 5, 2023 (Example_query_one_hop_with_category.ipynb)
