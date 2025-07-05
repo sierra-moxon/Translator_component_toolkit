@@ -1787,56 +1787,6 @@ def query_KP_all(subject_ids, object_ids, subject_categories, object_categories,
     return(result_dict, result_concept)
 
 # to be removed
-def format_query_json_old(subject_ids, object_ids, subject_categories, object_categories, predicates):
-    '''
-    Example input:
-    subject_ids = ["NCBIGene:3845"]
-    object_ids = []
-    subject_categories = ["biolink:Gene"]
-    object_categories = ["biolink:Gene"]
-    predicates = ["biolink:positively_correlated_with", "biolink:physically_interacts_with"]
-
-    '''
-    query_json_temp = {
-        "message": {
-            "query_graph": {
-                "nodes": {
-                    "n0": {
-                        "ids":[],
-                        "categories":[]
-                    },
-                    "n1": {
-                        "categories":[]
-                }
-                },
-                "edges": {
-                    "e1": {
-                        "subject": "n0",
-                        "object": "n1",
-                        "predicates": predicates
-                    }
-                }
-            }
-        }
-    }
-
-    if len(subject_ids) > 0:
-        query_json_temp["message"]["query_graph"]["nodes"]["n0"]["ids"] = subject_ids
-    if len(object_ids) > 0:
-        query_json_temp["message"]["query_graph"]["nodes"]["n1"]["ids"] = object_ids
-
-    if len(subject_categories) > 0:
-        query_json_temp["message"]["query_graph"]["nodes"]["n0"]["categories"] = subject_categories
-
-    if len(object_categories) > 0:
-        query_json_temp["message"]["query_graph"]["nodes"]["n1"]["categories"] = object_categories
-
-    if len(predicates) > 0:
-        query_json_temp["message"]["query_graph"]["edges"]["e1"]["predicates"] = predicates
-
-    return(query_json_temp)
-
-# to be removed
 def parse_result_old( API_keys_sele, API_keys_Not_include, predicates_forAnalysis,result_dic):
     Temp_APIkey = []
     Temp_subject_key = []
