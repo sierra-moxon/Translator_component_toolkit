@@ -2,20 +2,47 @@ import requests
 import json
 import pandas as pd
 
+def find_link(name):
+    #pre = "https://dev.smart-api.info/api/metakg/consolidated?size=2000&q=%28api.x-translator.component%3AKP+AND+api.name%3A" # This works for the previous version
+    pre = "https://smart-api.info/api/metakg/consolidated?size=2000&q=%28api.x-translator.component%3AKP+AND+api.name%3A" 
+    end = "%5C%28Trapi+v1.5.0%5C%29%29"
+    if '(Trapi v1.5.0)' in name:
+        url = pre
+        name_raw = name.split("(")[0]
+        words = name_raw.split(" ")
+    
+        length = len(words)
+        if length == 1:
+            url = url + words[0] + end
+        else:
+            for i in range(0,length-1):
+                url = url + words[i] + "+"
+            url = url+words[length-1]+end
+    
+    else:
+        words = name.split(" ")
+        url = pre
+        length = len(words)
+        
+        for i in range(0,length-1):
+            url = url + words[i] + "+"
+        url = url+words[length-1]+"%29"
+    return(url)
+
 def get_KP_metadata(APInames):
 
     '''
     This function is used to get the metadata of the KPs in the APInames dictionary.
     Example:
     >>> metaKG = TCT.get_KP_metadata(APInames) 
-    >>> All_predicates = list(set(metaKG['KG_category']))
+    >>> All_predicates = list(set(metaKG['Predicate']))
     All_categories = list((set(list(set(metaKG['Subject']))+list(set(metaKG['Object'])))))
     '''
 
     result_df = pd.DataFrame()
     API_list = []
     URL_list = []
-    KG_category_list = []
+    Predicate_list = []
     subject_list = []
     object_list = []
     url_list = []
@@ -30,18 +57,18 @@ def get_KP_metadata(APInames):
             json_text = json.loads(text)
 
         for i in (json_text['hits']):
-            KG_category_list.append("biolink:"+i['_id'].split("-")[1])
+            Predicate_list.append("biolink:"+i['_id'].split("-")[1])
             API_list.append(KP)
             subject_list.append('biolink:'+i['_id'].split("-")[0])
             object_list.append('biolink:'+i['_id'].split("-")[2])
             url_list.append(APInames[KP])
 
-    result_df = pd.DataFrame({ 'API': API_list, 'KG_category': KG_category_list, "Subject":subject_list, "Object":object_list, "URL":url_list})
+    result_df = pd.DataFrame({ 'API': API_list, 'Predicate': Predicate_list, "Subject":subject_list, "Object":object_list, "URL":url_list})
     
     return(result_df)
 
 
-def add_new_API_for_query(APInames, metaKG, newAPIname, newAPIurl, newAPIcategory, newAPIsubject, newAPIobject):
+def add_new_API_for_query(APInames, metaKG, newAPIname, newAPIurl, newAPIpredicate, newAPIsubject, newAPIobject):
 
     '''
     This function is used to add a new API beyond the current list of APIs for query
@@ -51,7 +78,7 @@ def add_new_API_for_query(APInames, metaKG, newAPIname, newAPIurl, newAPIcategor
     APInames[newAPIname] = newAPIurl
 
     new_row = pd.DataFrame({"API":newAPIname,
-                            "KG_category":newAPIcategory,
+                            "Predicate":newAPIpredicate,
                             "Subject":newAPIsubject, "Object":newAPIobject,
                             "URL":newAPIurl}, index=[0])
     metaKG = pd.concat([metaKG, new_row], ignore_index=True)
@@ -69,7 +96,10 @@ def add_plover_API(APInames, metaKG):
     Multiomics, 
     Microbiome, 
     and RTX KG2.
-    
+
+
+    Examples
+    --------
     Example: 
     >>> APInames, metaKG = add_plover_API(APInames, metaKG)
     '''
@@ -82,16 +112,15 @@ def add_plover_API(APInames, metaKG):
     for i in range(len(data["edges"])):
         APInames, metaKG = add_new_API_for_query(APInames, metaKG, "CATRAX BigGIM DrugResponse Performance Phase KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/BigGIM_DrugResponse_PerformancePhase/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
 
-        url = 'https://multiomics.rtx.ai:9990/PharmacogenomicsKG/meta_knowledge_graph'
-        response = requests.get(url)
-        data = response.json()
-        for i in range(len(data["edges"])):
-            APInames, metaKG = add_new_API_for_query(APInames, metaKG, "CATRAX Pharmacogenomics KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/PharmacogenomicsKG/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
+    url = 'https://multiomics.rtx.ai:9990/PharmacogenomicsKG/meta_knowledge_graph'
+    response = requests.get(url)
+    data = response.json()
+    for i in range(len(data["edges"])):
+        APInames, metaKG = add_new_API_for_query(APInames, metaKG, "CATRAX Pharmacogenomics KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/PharmacogenomicsKG/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
 
     url = 'https://multiomics.rtx.ai:9990/ctkp/meta_knowledge_graph'
     response = requests.get(url)
     data = response.json()
-
     for i in range(len(data["edges"])):
         APInames, metaKG = add_new_API_for_query(APInames, metaKG, "Clinical Trials KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/ctkp/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
 
@@ -101,13 +130,13 @@ def add_plover_API(APInames, metaKG):
     for i in range(len(data["edges"])):
         APInames, metaKG = add_new_API_for_query(APInames, metaKG, "Drug Approvals KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/dakp/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
 
-    url = 'https://multiomics.rtx.ai:9990/dakp/meta_knowledge_graph'
+    url = 'https://multiomics.rtx.ai:9990/mokp/meta_knowledge_graph'
     response = requests.get(url)
     data = response.json()
     for i in range(len(data["edges"])):
         APInames, metaKG = add_new_API_for_query(APInames, metaKG, "Multiomics KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/multiomics/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
 
-    url = 'https://multiomics.rtx.ai:9990/mokp/meta_knowledge_graph'
+    url = 'https://multiomics.rtx.ai:9990/mbkp/meta_knowledge_graph'
     response = requests.get(url)
     data = response.json()
     for i in range(len(data["edges"])):
@@ -119,7 +148,6 @@ def add_plover_API(APInames, metaKG):
     data = response.json()
     for i in range(len(data["edges"])):
         APInames, metaKG = add_new_API_for_query(APInames, metaKG, "RTX KG2 - TRAPI 1.5.0", "https://kg2cploverdb.ci.transltr.io/kg2c/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
-
 
     
     return APInames, metaKG
