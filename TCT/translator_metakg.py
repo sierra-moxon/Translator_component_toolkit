@@ -1,6 +1,8 @@
 import requests
 import json
 import pandas as pd
+from TCT import translator_metakg
+from TCT import translator_kpinfo
 
 def find_link(name):
     #pre = "https://dev.smart-api.info/api/metakg/consolidated?size=2000&q=%28api.x-translator.component%3AKP+AND+api.name%3A" # This works for the previous version

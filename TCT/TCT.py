@@ -954,7 +954,7 @@ def plot_heatmap(predicates_by_nodes_df,num_of_nodes = 20,
                                  fontsize = 6,
                                  title_fontsize = 10, 
                                  output_png="NE_heatmap.png"):
-    #matplotlib.use('Agg')
+    matplotlib.use('Agg')
     
     title = "Ranking of one-hop nodes by primary infores"
     ylab = "infores"
@@ -1121,6 +1121,112 @@ def format_query_json(subject_ids, object_ids, subject_categories, object_catego
 
     return(query_json_temp)
 
+
+def Path_finder(input_node1, input_node2, intermediate_categories, APInames, metaKG, API_predicates, input_node1_category = [], input_node2_category = []):
+    from TCT import name_resolver
+    from TCT import translator_metakg
+    from TCT import translator_kpinfo
+    from TCT import translator_query
+
+    """
+    This function is used to find paths between two input nodes with intermediate categories.
+    
+    --------------
+    Parameters:
+    input_node1 (str): The first input node, can be a gene name, protein name, or any other identifier.
+    input_node2 (str): The second input node, can be a gene name, protein name, or any other identifier.
+    intermediate_categories (list): A list of intermediate categories to be used in the path finding process.
+    
+    --------------
+    Returns:
+    paths (DataFrame): A DataFrame containing the paths found between the two input nodes.
+    input_node1_id (str): The curie id of the first input node.
+    input_node2_id (str): The curie id of the second input node.
+    result1 (dict): The result of the query for the first input node.
+    result2 (dict): The result of the query for the second input node.
+    result_parsed1 (DataFrame): The parsed results for the first input node.
+    result_parsed2 (DataFrame): The parsed results for the second input node.
+    result_ranked_by_primary_infores1 (DataFrame): The ranked results for the first input node based on primary infores.
+    result_ranked_by_primary_infores2 (DataFrame): The ranked results for the second
+    --------------
+    Example:
+    >>> paths, input_node1_id, input_node2_id, result1, result2, result_parsed1, result_parsed2, result_ranked_by_primary_infores1, result_ranked_by_primary_infores2 = Path_finder('WNT7B', 'NPM1', ['biolink:Gene', 'biolink:Protein'])
+    --------------
+
+    """
+    input_node1_info = name_resolver.lookup(input_node1)
+    input_node1_id = input_node1_info.curie
+    print(input_node1_id)
+    input_node1_list = [input_node1_id]
+    if len(input_node1_category) == 0:
+        input_node1_category = input_node1_info.types 
+    else:
+        input_node1_category = list(set(input_node1_category).intersection(set(input_node1_info.types)))
+        if len(input_node1_category) == 0:
+            input_node1_category = input_node1_info.types
+
+    input_node2_info = name_resolver.lookup(input_node2)
+    input_node2_id = input_node2_info.curie
+    print(input_node2_id)
+    input_node2_list = [input_node2_id]
+
+    if len(input_node2_category) == 0:
+        input_node2_category = input_node2_info.types 
+    else:
+        input_node2_category = list(set(input_node2_category).intersection(set(input_node2_info.types)))
+        if len(input_node2_category) == 0:
+            input_node2_category = input_node2_info.types
+
+
+    # Step 5: Select predicates and APIs based on the intermediate categories
+    sele_predicates1, sele_APIs1, API_URLs1 = sele_predicates_API(input_node1_category,
+                                                                intermediate_categories,
+                                                                metaKG, APInames)
+    sele_predicates2, sele_APIs2, API_URLs2 = sele_predicates_API(input_node2_category,
+                                                                intermediate_categories,
+                                                                metaKG, APInames)    
+
+    query_json1 = format_query_json(input_node1_list,  # a list of identifiers for input node1
+                                    [],  # id list for the intermediate node, it can be empty list if only want to query node1
+                                    input_node1_category,  # a list of categories of input node1
+                                    intermediate_categories,  # a list of categories of the intermediate node
+                                    sele_predicates1) # a list of predicates
+
+    query_json2 = format_query_json(input_node2_list,  # a list of identifiers for input node2
+                                    [],  # id list for the intermediate node, it can be empty list if only want to query node2
+                                    input_node2_category,  # a list of categories of input node2
+                                    intermediate_categories,  # a list of categories of the intermediate node
+                                    sele_predicates2) # a list of predicates
+    
+    result1 = translator_query.parallel_api_query(query_json=query_json1, 
+                             select_APIs = sele_APIs1, 
+                             APInames=APInames, 
+                             API_predicates=API_predicates, 
+                             max_workers=len(sele_APIs1))
+    result2 = translator_query.parallel_api_query(query_json=query_json2, 
+                                select_APIs = sele_APIs2, 
+                                APInames=APInames, 
+                                API_predicates=API_predicates, 
+                                max_workers=len(sele_APIs2))
+
+    result_parsed1 = parse_KG(result1)
+        # Step 7: Ranking the results. This ranking method is based on the number of unique
+        # primary infores. It can only be used to rank the results with one defined node.
+    result_ranked_by_primary_infores1 = rank_by_primary_infores(result_parsed1, input_node1_id)   # input_node1_id is the curie id of the
+
+    result_parsed2 = parse_KG(result2)
+    result_ranked_by_primary_infores2 = rank_by_primary_infores(result_parsed2, input_node2_id)   # input_node2_id is the curie id of the
+
+    possible_paths = len(set(result_ranked_by_primary_infores1['output_node']).intersection(set(result_ranked_by_primary_infores2['output_node'])))
+    print("Number of possible paths: ", possible_paths)
+
+    paths = merge_ranking_by_number_of_infores(result_ranked_by_primary_infores1, result_ranked_by_primary_infores2, 
+                                            top_n = 30,
+                                            fontsize=10,
+                                            title_fontsize=12,)
+    
+    return paths,  input_node1_id, input_node2_id, result1, result2, result_parsed1, result_parsed2, result_ranked_by_primary_infores1, result_ranked_by_primary_infores2
+
 # used. Dec 5, 2023 (Example_query_one_hop_with_category.ipynb)
 def query_KP(remoteURL, query_json):
     # Single query
@@ -1148,6 +1254,20 @@ def query_KP(remoteURL, query_json):
     
 # used. Dec 5, 2023 (Example_query_one_hop_with_category.ipynb)
 def parallel_api_query(URLS, query_json, max_workers=1):
+    '''
+    Queries multiple APIs in parallel and merges the results into a single knowledge graph.
+
+    Parameters:
+    -----------
+    URLS: list of API URLs to query
+    query_json: the query JSON to be sent to each API
+    max_workers: number of parallel workers to use for querying
+    Returns a merged knowledge graph from all successful API responses.
+    -------
+    Example:
+    >>> result = TCT.parallel_api_query(API_URLs,query_json=query_json, max_workers=len(API_URLs1))
+
+    '''
     # Parallel query
     result = []
     from concurrent.futures import ThreadPoolExecutor, as_completed
