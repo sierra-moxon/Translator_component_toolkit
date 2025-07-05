@@ -396,157 +396,10 @@ def list_Translator_APIs():
     }
     return(APInames)
 
-# used Dec 5, 2023
-def find_link(name):
-    #pre = "https://dev.smart-api.info/api/metakg/consolidated?size=2000&q=%28api.x-translator.component%3AKP+AND+api.name%3A" # This works for the previous version
-    pre = "https://smart-api.info/api/metakg/consolidated?size=2000&q=%28api.x-translator.component%3AKP+AND+api.name%3A" 
-    end = "%5C%28Trapi+v1.4.0%5C%29%29"
-    if '(Trapi v1.4.0)' in name:
-        url = pre
-        name_raw = name.split("(")[0]
-        words = name_raw.split(" ")
-    
-        length = len(words)
-        if length == 1:
-            url = url + words[0] + end
-        else:
-            for i in range(0,length-1):
-                url = url + words[i] + "+"
-            url = url+words[length-1]+end
-    
-    else:
-        words = name.split(" ")
-        url = pre
-        length = len(words)
-        
-        for i in range(0,length-1):
-            url = url + words[i] + "+"
-        url = url+words[length-1]+"%29"
-    return(url)
-
-# used
-# Finalized version: Dec 5, 2023 (Example_query_one_hop_with_category.ipynb)
-def get_KP_metadata(APInames):
-
-    '''
-    This function is used to get the metadata of the KPs in the APInames dictionary.
-    Example:
-    >>> metaKG = TCT.get_KP_metadata(APInames) 
-    >>> All_predicates = list(set(metaKG['KG_category']))
-    All_categories = list((set(list(set(metaKG['Subject']))+list(set(metaKG['Object'])))))
-    '''
-
-    result_df = pd.DataFrame()
-    API_list = []
-    URL_list = []
-    KG_category_list = []
-    subject_list = []
-    object_list = []
-    url_list = []
-    #for KP in KPnames:
-    for KP in APInames.keys():
-        json_text ={}
-        if KP == "RTX KG2 - TRAPI 1.5.0": 
-            text =requests.get("https://smart-api.info/api/metakg/consolidated?size=20&q=%28api.x-translator.component%3AKP+AND+api.name%3ARTX+KG2+%5C-+TRAPI+1%5C.4%5C.0%29").text  # This works for the previous version
-            json_text = json.loads(text)
-        else:   
-            text = requests.get(find_link(KP)).text
-            json_text = json.loads(text)
-
-        for i in (json_text['hits']):
-            KG_category_list.append("biolink:"+i['_id'].split("-")[1])
-            API_list.append(KP)
-            subject_list.append('biolink:'+i['_id'].split("-")[0])
-            object_list.append('biolink:'+i['_id'].split("-")[2])
-            url_list.append(APInames[KP])
-
-    result_df = pd.DataFrame({ 'API': API_list, 'Predicate': KG_category_list, "Subject":subject_list, "Object":object_list, "URL":url_list})
-    
-    return(result_df)
 
 
-def add_new_API_for_query(APInames, metaKG, newAPIname, newAPIurl, newAPIcategory, newAPIsubject, newAPIobject):
-
-    '''
-    This function is used to add a new API beyond the current list of APIs for query
-    Example: APInames, metaKG = add_new_API_for_query(APInames, metaKG, "BigGIM_BMG", "http://127.0.0.1:8000/find_path_by_predicate", "Gene-physically_interacts_with-gene", "Gene", "Gene")
-
-    '''
-    APInames[newAPIname] = newAPIurl
-
-    new_row = pd.DataFrame({"API":newAPIname,
-                            "KG_category":newAPIcategory,
-                            "Subject":newAPIsubject, "Object":newAPIobject,
-                            "URL":newAPIurl}, index=[0])
-    metaKG = pd.concat([metaKG, new_row], ignore_index=True)
-    return APInames, metaKG
 
 
-def add_plover_API(APInames, metaKG):
-    '''
-    This function is used to add the Plover APIs developed by the CATRAX team to the APInames and metaKG.
-    Current APIs include :
-    CATRAX BigGIM DrugResponse Performance Phase, 
-    CATRAX Pharmacogenomics, 
-    Clinical Trials, 
-    Drug Approvals, 
-    Multiomics, 
-    Microbiome, 
-    and RTX KG2.
-    
-    Example: 
-    >>> APInames, metaKG = add_plover_API(APInames, metaKG)
-    '''
-    
-
-    import requests
-    url = 'https://multiomics.rtx.ai:9990/BigGIM_DrugResponse_PerformancePhase/meta_knowledge_graph'
-    response = requests.get(url)
-    data = response.json()
-    for i in range(len(data["edges"])):
-        APInames, metaKG = add_new_API_for_query(APInames, metaKG, "CATRAX BigGIM DrugResponse Performance Phase KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/BigGIM_DrugResponse_PerformancePhase/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
-
-        url = 'https://multiomics.rtx.ai:9990/PharmacogenomicsKG/meta_knowledge_graph'
-        response = requests.get(url)
-        data = response.json()
-        for i in range(len(data["edges"])):
-            APInames, metaKG = add_new_API_for_query(APInames, metaKG, "CATRAX Pharmacogenomics KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/PharmacogenomicsKG/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
-
-    url = 'https://multiomics.rtx.ai:9990/ctkp/meta_knowledge_graph'
-    response = requests.get(url)
-    data = response.json()
-
-    for i in range(len(data["edges"])):
-        APInames, metaKG = add_new_API_for_query(APInames, metaKG, "Clinical Trials KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/ctkp/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
-
-    url = 'https://multiomics.rtx.ai:9990/dakp/meta_knowledge_graph'
-    response = requests.get(url)
-    data = response.json()
-    for i in range(len(data["edges"])):
-        APInames, metaKG = add_new_API_for_query(APInames, metaKG, "Drug Approvals KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/dakp/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
-
-    url = 'https://multiomics.rtx.ai:9990/dakp/meta_knowledge_graph'
-    response = requests.get(url)
-    data = response.json()
-    for i in range(len(data["edges"])):
-        APInames, metaKG = add_new_API_for_query(APInames, metaKG, "Multiomics KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/multiomics/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
-
-    url = 'https://multiomics.rtx.ai:9990/mokp/meta_knowledge_graph'
-    response = requests.get(url)
-    data = response.json()
-    for i in range(len(data["edges"])):
-        APInames, metaKG = add_new_API_for_query(APInames, metaKG, "Microbiome KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/mbkp/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
-
-
-    url = 'https://kg2cploverdb.ci.transltr.io/kg2c/meta_knowledge_graph'
-    response = requests.get(url)
-    data = response.json()
-    for i in range(len(data["edges"])):
-        APInames, metaKG = add_new_API_for_query(APInames, metaKG, "RTX KG2 - TRAPI 1.5.0", "https://kg2cploverdb.ci.transltr.io/kg2c/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
-
-
-    
-    return APInames, metaKG
 
 # used. Dec 5, 2023 (Example_query_one_hop_with_category.ipynb)
 def select_API(sub_list,obj_list, metaKG):
@@ -1123,11 +976,6 @@ def format_query_json(subject_ids, object_ids, subject_categories, object_catego
 
 
 def Path_finder(input_node1, input_node2, intermediate_categories, APInames, metaKG, API_predicates, input_node1_category = [], input_node2_category = []):
-    from TCT import name_resolver
-    from TCT import translator_metakg
-    from TCT import translator_kpinfo
-    from TCT import translator_query
-
     """
     This function is used to find paths between two input nodes with intermediate categories.
     
@@ -1154,6 +1002,10 @@ def Path_finder(input_node1, input_node2, intermediate_categories, APInames, met
     --------------
 
     """
+    from TCT import name_resolver
+    from TCT import translator_metakg
+    from TCT import translator_kpinfo
+    from TCT import translator_query
     input_node1_info = name_resolver.lookup(input_node1)
     input_node1_id = input_node1_info.curie
     print(input_node1_id)
@@ -1228,76 +1080,7 @@ def Path_finder(input_node1, input_node2, intermediate_categories, APInames, met
     return paths,  input_node1_id, input_node2_id, result1, result2, result_parsed1, result_parsed2, result_ranked_by_primary_infores1, result_ranked_by_primary_infores2
 
 # used. Dec 5, 2023 (Example_query_one_hop_with_category.ipynb)
-def query_KP(remoteURL, query_json):
-    # Single query
-    response = requests.post(remoteURL, json=query_json)
-    #print(response.status_code)
-    if response.status_code == 200:
-        #print(response.json())[0]
-        if "message" in response.json():
-            result = response.json()["message"]
-            #print(result) # revised Dec 1, 2023
-            if "knowledge_graph" in result:
-                #return(result['knowledge_graph'])
-                print("Success!" + remoteURL)
-                return(result)
-                
-            else:
-                print("Warning:" + remoteURL + "no knowledge_graph in response.")
-                return()
-        else:
-            print("Warning:" + remoteURL + "no message in response.")
-            return()
-    else:
-        print("Warning Code:" + str(response.status_code) + ":" +remoteURL  )
-        return()
-    
-# used. Dec 5, 2023 (Example_query_one_hop_with_category.ipynb)
-def parallel_api_query(URLS, query_json, max_workers=1):
-    '''
-    Queries multiple APIs in parallel and merges the results into a single knowledge graph.
 
-    Parameters:
-    -----------
-    URLS: list of API URLs to query
-    query_json: the query JSON to be sent to each API
-    max_workers: number of parallel workers to use for querying
-    Returns a merged knowledge graph from all successful API responses.
-    -------
-    Example:
-    >>> result = TCT.parallel_api_query(API_URLs,query_json=query_json, max_workers=len(API_URLs1))
-
-    '''
-    # Parallel query
-    result = []
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        future_to_url = {executor.submit(query_KP, url, query_json): url for url in URLS}
-
-        for future in as_completed(future_to_url):
-            url = future_to_url[future]
-            try:
-                data = future.result()
-                if 'knowledge_graph' in data:
-                    result.append(data)
-            except Exception as exc:
-                print('%r generated an exception: %s' % (url, exc))
-    
-    included_KP_ID = []
-    for i in range(0,len(result)):
-        if result[i]['knowledge_graph'] is not None:
-            if 'knowledge_graph' in result[i]:
-                if 'edges' in result[i]['knowledge_graph']:
-                    if len(result[i]['knowledge_graph']['edges']) > 0:
-                        included_KP_ID.append(i)
-
-    result_merged = {}
-    for i in included_KP_ID:
-        result_merged = {**result_merged, **result[i]['knowledge_graph']['edges']}
-
-    len(result_merged)
-
-    return(result_merged)
 
 # used. Dec 5, 2023    (Example_query_one_hop_with_category.ipynb)
 def parse_KG(result):
