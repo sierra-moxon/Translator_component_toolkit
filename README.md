@@ -24,7 +24,10 @@ Guangrong Qin, guangrong.qin@isbscience.org
 
 To install TCT as a python library, first clone this repository, and then run `pip install -e .` from this folder.
 
-### Please follow the example notebooks (three utilities) below to explore the Translator APIs.
+### Please follow the example notebooks (four utilities) below to explore the Translator APIs.
+
+#### KG overview
+Explore different KGs **[KG overview](./notebooks/overview_of_KGs.ipynb)
 
 #### Connection finder
 Example notebook for **[ConnectionFinder](./notebooks/Connection_finder.ipynb)**

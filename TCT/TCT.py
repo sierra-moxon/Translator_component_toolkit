@@ -460,7 +460,7 @@ def get_KP_metadata(APInames):
             object_list.append('biolink:'+i['_id'].split("-")[2])
             url_list.append(APInames[KP])
 
-    result_df = pd.DataFrame({ 'API': API_list, 'KG_category': KG_category_list, "Subject":subject_list, "Object":object_list, "URL":url_list})
+    result_df = pd.DataFrame({ 'API': API_list, 'Predicate': KG_category_list, "Subject":subject_list, "Object":object_list, "URL":url_list})
     
     return(result_df)
 
@@ -551,9 +551,23 @@ def add_plover_API(APInames, metaKG):
 # used. Dec 5, 2023 (Example_query_one_hop_with_category.ipynb)
 def select_API(sub_list,obj_list, metaKG):
     '''
+    selects the APIs that can connect the given subject and object categories in the meta knowledge graph.
+    
     sub_list = ["biolink:Gene", "biolink:Protein"]
     obj_list = ["biolink:Gene", "biolink:Disease"]
-    
+
+    ---------
+    Example:
+    >>> sub_list = ["biolink:Gene", "biolink:Protein"]
+    >>> obj_list = ["biolink:Gene", "biolink:Disease"]
+    >>> 
+    >>> Translator_KP_info,APInames= translator_kpinfo.get_translator_kp_info()
+    >>> print(len(Translator_KP_info))
+    >>> metaKG = translator_metakg.get_KP_metadata(APInames) 
+    >>> print(metaKG.shape)
+    >>> APInames,metaKG = translator_metakg.add_plover_API(APInames, metaKG)
+    >>> selected_apis = select_API(sub_list, obj_list, metaKG)
+    >>> print(selected_apis)
     '''
     new_sub_list = sub_list
     new_obj_list = obj_list
@@ -568,14 +582,43 @@ def select_API(sub_list,obj_list, metaKG):
     df = pd.concat([df1,df2])
     return(list(set(df['API'].values)))
 
+
+
 # used. Dec 5, 2023  (Example_query_one_hop_with_category.ipynb)
 def select_concept(sub_list,obj_list,metaKG):
+    '''
+    Selects the predicates connecting the given subject and object categories in the meta knowledge graph.
+    '''
     #result_df = pd.read_csv("KP_metadata.csv")
     df1 = metaKG.loc[(metaKG['Subject'].isin(sub_list)) & (metaKG['Object'].isin(obj_list))]
     df2 = metaKG.loc[(metaKG['Subject'].isin(obj_list)) & (metaKG['Object'].isin(sub_list))]
     df = pd.concat([df1,df2])
-    return(set(list(df['KG_category'])))
+    return(set(list(df['Predicate'])))
+def sele_predicates_API(input_node1_category,input_node2_category,metaKG, APInames):
+    '''
+    Selects predicates, APIs, and API URLs for the given input node categories.
 
+    -----------
+    Example:
+    >>> sele_predicates, sele_APIs, API_URLs = sele_predicates_API(input_node1_category,input_node2_category,metaKG, APInames)
+    
+    '''
+    sele_predicates = list(set(select_concept(sub_list=input_node1_category,
+                                                 obj_list=input_node2_category,
+                                                 metaKG=metaKG)))
+    sele_APIs = select_API(sub_list=input_node1_category,
+                           obj_list=input_node2_category,
+                           metaKG=metaKG)
+    
+    API_URLs = get_Translator_API_URL(sele_APIs, APInames)
+    if len(sele_predicates) == 0:
+        print("No predicates found for the given categories.")
+    if len(sele_APIs) == 0:
+        print("No APIs found for the given categories.")
+    if len(API_URLs) == 0:
+        print("No API URLs found for the given categories.")
+
+    return sele_predicates, sele_APIs, API_URLs
 # used. Dec 5, 2023 (Example_query_one_hop_with_category.ipynb)
 def get_Translator_API_URL(API_sele, APInames):
     API_URL = []
@@ -1036,40 +1079,45 @@ def format_query_json(subject_ids, object_ids, subject_categories, object_catego
     query_json_temp = {
         "message": {
             "query_graph": {
-                "nodes": {
-                    "n0": {
-                        "ids":[],
-                        "categories":[]
-                    },
-                    "n1": {
-                        #"ids":[],
-                        "categories":[]
-                }
-                },
+                
                 "edges": {
-                    "e1": {
-                        "subject": "n0",
-                        "object": "n1",
+                    "e00": {
+                    #"e1": {
+                        "subject": "n01",
+                        "object": "n00",
                         "predicates": predicates
-                    }
+                        }
+                    },
+                "nodes": {
+                    "n00": {    
+                        "ids":subject_ids, # required
+                        #"categories":[] # optional, if not provided, it will be empty
+                        },
+                    "n01": {
+                        #"ids":[],
+                        "categories":[] # required
+                        }}
                 }
             }
         }
-    }
 
     if len(subject_ids) > 0:
-        query_json_temp["message"]["query_graph"]["nodes"]["n0"]["ids"] = subject_ids
-    if len(object_ids) > 0:
-        query_json_temp["message"]["query_graph"]["nodes"]["n1"]["ids"] = object_ids
+        #query_json_temp["message"]["query_graph"]["nodes"]["n0"]["ids"] = subject_ids
+        query_json_temp["message"]["query_graph"]["nodes"]["n00"]["ids"] = subject_ids
 
-    if len(subject_categories) > 0:
-        query_json_temp["message"]["query_graph"]["nodes"]["n0"]["categories"] = subject_categories
+    #if len(object_ids) > 0:
+        #query_json_temp["message"]["query_graph"]["nodes"]["n1"]["ids"] = object_ids
+        #query_json_temp["message"]["query_graph"]["nodes"]["n00"]["ids"] = object_ids
+
+    #if len(subject_categories) > 0:
+    #    query_json_temp["message"]["query_graph"]["nodes"]["n01"]["categories"] = subject_categories
 
     if len(object_categories) > 0:
-        query_json_temp["message"]["query_graph"]["nodes"]["n1"]["categories"] = object_categories
+        #query_json_temp["message"]["query_graph"]["nodes"]["n1"]["categories"] = object_categories
+        query_json_temp["message"]["query_graph"]["nodes"]["n01"]["categories"] = object_categories
 
     if len(predicates) > 0:
-        query_json_temp["message"]["query_graph"]["edges"]["e1"]["predicates"] = predicates
+        query_json_temp["message"]["query_graph"]["edges"]["e00"]["predicates"] = predicates
 
     return(query_json_temp)
 
