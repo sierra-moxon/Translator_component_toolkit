@@ -35,7 +35,9 @@ def get_KP_metadata(APInames):
 
     '''
     This function is used to get the metadata of the KPs in the APInames dictionary.
-    Example:
+
+    Examples
+    --------
     >>> metaKG = TCT.get_KP_metadata(APInames) 
     >>> All_predicates = list(set(metaKG['Predicate']))
     All_categories = list((set(list(set(metaKG['Subject']))+list(set(metaKG['Object'])))))
@@ -74,7 +76,10 @@ def add_new_API_for_query(APInames, metaKG, newAPIname, newAPIurl, newAPIpredica
 
     '''
     This function is used to add a new API beyond the current list of APIs for query
-    Example: APInames, metaKG = add_new_API_for_query(APInames, metaKG, "BigGIM_BMG", "http://127.0.0.1:8000/find_path_by_predicate", "Gene-physically_interacts_with-gene", "Gene", "Gene")
+
+    Examples
+    --------
+    >>> APInames, metaKG = add_new_API_for_query(APInames, metaKG, "BigGIM_BMG", "http://127.0.0.1:8000/find_path_by_predicate", "Gene-physically_interacts_with-gene", "Gene", "Gene")
 
     '''
     APInames[newAPIname] = newAPIurl
@@ -90,6 +95,7 @@ def add_new_API_for_query(APInames, metaKG, newAPIname, newAPIurl, newAPIpredica
 def add_plover_API(APInames, metaKG):
     '''
     This function is used to add the Plover APIs developed by the CATRAX team to the APInames and metaKG.
+
     Current APIs include :
     CATRAX BigGIM DrugResponse Performance Phase, 
     CATRAX Pharmacogenomics, 
@@ -102,7 +108,6 @@ def add_plover_API(APInames, metaKG):
 
     Examples
     --------
-    Example: 
     >>> APInames, metaKG = add_plover_API(APInames, metaKG)
     '''
     
