@@ -8,10 +8,13 @@ from TCT import translator_kpinfo
 def get_translator_API_predicates():
     '''
     Get the predicates supported by each API.
+
+    Returns
     --------
-    Returns:
     A dictionary of API names and their predicates.
 
+    Examples
+    --------
     >>> API_predicates = get_translator_API_predicates()
     '''
     Translator_KP_info,APInames= translator_kpinfo.get_translator_kp_info()
@@ -37,18 +40,22 @@ def get_translator_API_predicates():
 def optimize_query_json(query_json, API_name_cur, API_predicates):
     '''
     Optimize the query JSON by removing predicates that are not supported by the selected APIs.
-    
-    
-    Parameters:
-    --------
-    query_json1: a query in TRAPI 1.5.0 format
-    API_name_cur: the name of the API to query
-    API_predicates: a dictionary of API names and their predicates
 
-    Returns:
+    Parameters
+    ----------
+    query_json1 : str
+        a query in TRAPI 1.5.0 format
+    API_name_cur : str
+        the name of the API to query
+    API_predicates : dict
+        a dictionary of API names and their predicates
+
+    Returns
     --------
     A modified query JSON with only the predicates supported by the selected APIs.
     
+    Examples
+    --------
     >>> 
     '''
     query_json_cur = query_json.copy()  # copy the query_json to avoid modifying the original query_json
@@ -95,14 +102,21 @@ def parallel_api_query(query_json, select_APIs, APInames, API_predicates,max_wor
     '''
     Queries multiple APIs in parallel and merges the results into a single knowledge graph.
 
-    Parameters:
-    -----------
-    URLS: list of API URLs to query
-    query_json: the query JSON to be sent to each API
-    max_workers: number of parallel workers to use for querying
-    Returns a merged knowledge graph from all successful API responses.
+    Parameters
+    ----------
+    URLS
+        list of API URLs to query
+    query_json
+        the query JSON to be sent to each API
+    max_workers
+        number of parallel workers to use for querying
+
+    Returns
     -------
-    Example:
+    Returns a merged knowledge graph from all successful API responses.
+
+    Examples
+    --------
     >>> result = TCT.parallel_api_query(API_URLs,query_json=query_json, max_workers=len(API_URLs1))
 
     '''
