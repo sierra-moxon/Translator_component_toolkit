@@ -37,7 +37,8 @@ def get_translator_API_predicates():
 def optimize_query_json(query_json, API_name_cur, API_predicates):
     '''
     Optimize the query JSON by removing predicates that are not supported by the selected APIs.
-    --------
+    
+    
     Parameters:
     --------
     query_json1: a query in TRAPI 1.5.0 format

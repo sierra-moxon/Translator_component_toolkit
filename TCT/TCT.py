@@ -975,6 +975,76 @@ def format_query_json(subject_ids, object_ids, subject_categories, object_catego
     return(query_json_temp)
 
 
+def Neiborhood_finder(input_node, node2_categories, APInames, metaKG, API_predicates, input_node_category = []):
+    """
+    This function is used to find the neighborhood of a given input node with intermediate categories.
+    
+    --------------
+    Parameters:
+    input_node (str): The input node, can be a gene name, protein name, or any other identifier.
+    node2_categories (list): A list of intermediate categories to be used in the neighborhood finding process.
+    APInames (dict): A dictionary containing the names of the APIs to be used.
+    metaKG (DataFrame): The metadata knowledge graph containing information about the APIs and their predicates.
+    API_predicates (dict): A dictionary containing the predicates for each API.
+    input_node_category (list): Optional. A list of categories for the input node. If empty, it will be derived from the input node's types.
+    
+    --------------
+    Returns:
+    input_node_id (str): The curie id of the input node.
+    result (dict): The result of the query for the input node.
+    result_parsed (DataFrame): The parsed results for the input node.
+    result_ranked_by_primary_infores (DataFrame): The ranked results based on primary infores.
+    
+    --------------
+    Example:
+    >>> input_node_id, result, result_parsed, result_ranked_by_primary_infores1 = Neiborhood_finder('Ovarian cancer',
+                                                                                            node2_categories = ['biolink:SmallMolecule', 'biolink:Drug', 'biolink:ChemicalEntity'],
+                                                                                            APInames = APInames,
+                                                                                            metaKG = metaKG,
+                                                                                            API_predicates = API_predicates)   
+    --------------
+    
+    """
+    from TCT import name_resolver
+    from TCT import translator_metakg
+    from TCT import translator_kpinfo
+    from TCT import translator_query
+
+    # Step 1: Resolve the input node to get its curie id and categories
+    input_node_info = name_resolver.lookup(input_node)
+    input_node_id = input_node_info.curie
+    print(input_node_id)
+    
+    if len(input_node_category) == 0:
+        input_node_category = input_node_info.types 
+    else:
+        input_node_category = list(set(input_node_category).intersection(set(input_node_info.types)))
+        if len(input_node_category) == 0:
+            input_node_category = input_node_info.types
+
+    # Step 2: Select predicates and APIs based on the intermediate categories
+    sele_predicates, sele_APIs, API_URLs = sele_predicates_API(input_node_category,
+                                                                node2_categories,
+                                                                metaKG, APInames)
+
+    # Step 3: Format the query JSON for the input node
+    query_json = format_query_json([input_node_id], [], 
+                                   [input_node_category], 
+                                   node2_categories, 
+                                   sele_predicates)
+
+    # Step 4: Query the APIs in parallel
+    result = translator_query.parallel_api_query(query_json=query_json, 
+                             select_APIs= sele_APIs, 
+                             APInames=APInames,
+                             API_predicates=API_predicates,
+                             max_workers=len(sele_APIs))
+    result_parsed = parse_KG(result)
+        # Step 7: Ranking the results. This ranking method is based on the number of unique
+        # primary infores. It can only be used to rank the results with one defined node.
+    result_ranked_by_primary_infores1 = rank_by_primary_infores(result_parsed, input_node_id)   # input_node1_id is the curie id of the
+    return input_node_id, result, result_parsed, result_ranked_by_primary_infores1
+
 def Path_finder(input_node1, input_node2, intermediate_categories, APInames, metaKG, API_predicates, input_node1_category = [], input_node2_category = []):
     """
     This function is used to find paths between two input nodes with intermediate categories.
@@ -1396,8 +1466,8 @@ def merge_ranking_by_number_of_infores(result_ranked_by_primary_infores,
     for i in overlapped:
         #print(result_ranked_by_primary_infores[result_ranked_by_primary_infores['output_node'] == i]['unique_predicates'])
         dic_xy[i] = dic_x[i] * dic_y[i]
-        predicts_list1.append('\n'.join(list(set(result_ranked_by_primary_infores[result_ranked_by_primary_infores['output_node'] == i]['unique_predicates'].values[0]))))
-        predicts_list2.append('\n'.join(list(result_ranked_by_primary_infores1[result_ranked_by_primary_infores1['output_node'] == i]['unique_predicates'].values[0])))
+        predicts_list1.append('; '.join(list(set(result_ranked_by_primary_infores[result_ranked_by_primary_infores['output_node'] == i]['unique_predicates'].values[0]))))
+        predicts_list2.append('; '.join(list(result_ranked_by_primary_infores1[result_ranked_by_primary_infores1['output_node'] == i]['unique_predicates'].values[0])))
 
     result_xy = pd.DataFrame.from_dict(dic_xy, orient='index', columns=['score'])
     result_xy['output_node'] = result_xy.index
