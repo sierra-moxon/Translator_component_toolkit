@@ -807,10 +807,10 @@ def plot_heatmap(predicates_by_nodes_df,num_of_nodes = 20,
                                  fontsize = 6,
                                  title_fontsize = 10, 
                                  output_png="NE_heatmap.png"):
-    matplotlib.use('Agg')
+    #matplotlib.use('Agg')
     
-    title = "Ranking of one-hop nodes by primary infores"
-    ylab = "infores"
+    #title = "Ranking of one-hop nodes by primary infores"
+    #ylab = "infores"
     df = predicates_by_nodes_df.iloc[:,0:num_of_nodes]
     colnames = list(df.columns)
     # create teh figure and subplot
@@ -824,8 +824,8 @@ def plot_heatmap(predicates_by_nodes_df,num_of_nodes = 20,
     p1.set_xticklabels(p1.get_xticklabels(), rotation=90, fontsize=fontsize)
     p1.set_yticklabels(p1.get_yticklabels(), fontsize=fontsize)
 
-    p1.set_title(title)
-    p1.set_ylabel(ylab)
+    #p1.set_title(title)
+    #p1.set_ylabel(ylab)
     print(p1.get_xticklabels())
     # set xticklabels with colnames
 
@@ -1508,7 +1508,7 @@ def plot_path_bar(x,
                     fontsize = 8,
                     title_fontsize = 10, 
                     output_png="NE_heatmap.png"):
-    matplotlib.use('Agg')
+    #matplotlib.use('Agg')
     
     title = "Bridging nodes"
     fig = plt.figure(figsize=(5,5), dpi = 300)
