@@ -1,7 +1,7 @@
 """
 This is a wrapper around the Name Resolver API.
 
-API docs: https://name-lookup.ci.transltr.io/doc
+API docs: https://name-lookup.ci.transltr.io/docs
 """
 import urllib.parse
 
