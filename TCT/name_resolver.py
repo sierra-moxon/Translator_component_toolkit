@@ -112,3 +112,55 @@ def synonyms(query: str, **kwargs):
             return all_nodes
     else:
         raise requests.RequestException('Response from server had error, code ' + str(response.status_code) + ' ' + str(response))
+
+
+def chunk_list(data:list, size:int):
+    #Extra method to help chunk large files and avoid 504 error.
+    chunks = []
+    for i in range(0, len(data), size):
+        chunks.append(data[i: i+size])
+    return chunks
+
+
+def batch_lookup(strings:list[str], size:int=10, **kwargs):
+    """
+    A wrapper around the `bulk-lookup` api endpoint. Given a list query strings, this returns a dict of lookup string : CURIE ID. 
+
+    Parameters
+    ----------
+    strings : list[str]
+        List of 
+    size : int
+        Desired chunking size. Default: 10
+    **kwargs
+        Other arguments to `bulk-lookup`
+
+    Returns
+    -------
+    Dict of string : CURIE id
+
+    Examples
+    --------
+    >>> batch_lookup(['AML', 'CML'])
+    {'AML': 'MONDO:0018874', 'CML': 'MONDO:0010809'}
+    """
+    path = urllib.parse.urljoin(URL, 'bulk-lookup')
+    curies = {}
+    chunks = chunk_list(strings, size)
+    for chunk in chunks:
+        payload = {
+            "strings": chunk,
+            **kwargs
+        }
+        response = requests.post(path, json = payload)
+        if response.status_code == 200:
+            result = response.json()
+            if(len(result) == 0):
+                raise LookupError('No matching CURIE found for the given strings ' + str(strings))
+            else:
+                for s in chunk:
+                    nodes = result.get(s, [])
+                    curies[s] = nodes[0].get('curie', None)
+        else:
+            raise requests.RequestException('Response from server had error, code ' + str(response.status_code) + ' ' + str(response))
+    return curies
