@@ -9,8 +9,8 @@ import requests
 
 from .translator_node import TranslatorNode
 
-"""This is the root URL for the API."""
 URL = 'https://name-lookup.ci.transltr.io/'
+"""This is the root URL for the API."""
 
 
 def lookup(query: str, return_top_response:bool=True, return_synonyms:bool=False, **kwargs):
@@ -77,7 +77,7 @@ def lookup(query: str, return_top_response:bool=True, return_synonyms:bool=False
 
 def synonyms(query: str, **kwargs):
     """
-    A wrapper around the `synonyms` api endpoint. Given a query string, this returns a TranslatorNode object or a list of TranslatorNode objects corresponding to the given name. 
+    A wrapper around the `synonyms` api endpoint. Given a query string, this returns a dict of CURIE id : TranslatorNode for all synonyms for the given query. 
 
     Parameters
     ----------
@@ -122,27 +122,32 @@ def chunk_list(data:list, size:int):
     return chunks
 
 
-def batch_lookup(strings:list[str], size:int=10, **kwargs):
+def batch_lookup(strings:list[str], size: int=25, return_top_response:bool=True, return_synonyms:bool=False, **kwargs) -> dict:
     """
-    A wrapper around the `bulk-lookup` api endpoint. Given a list query strings, this returns a dict of lookup string : CURIE ID. 
+    A wrapper around the `bulk-lookup` api endpoint. Given a list of query strings, this returns a TranslatorNode object or a list of TranslatorNode objects corresponding to the given name. 
 
     Parameters
     ----------
     strings : list[str]
-        List of 
+        List of query strings.
     size : int
-        Desired chunking size. Default: 10
+        Desired chunking size, default is 25.
+    return_top_response : bool
+        If true, this returns only the top response per string. If false, this returns a list of all responses per string. Default: True
+    return_synonyms : bool
+        If true, the resulting TranslatorNode objects contain a list of synonyms. If false, they do not include synonyms. Default: False
     **kwargs
         Other arguments to `bulk-lookup`
 
     Returns
     -------
-    Dict of string : CURIE id
+    Dict of string : TranslatorNode object if return_top_response is True, list of TranslatorNode objects if return_top_response is False
 
     Examples
     --------
     >>> batch_lookup(['AML', 'CML'])
-    {'AML': 'MONDO:0018874', 'CML': 'MONDO:0010809'}
+    {'AML': TranslatorNode(curie='MONDO:0018874', label='acute myeloid leukemia',...),
+     'CML': TranslatorNode(curie='MONDO:0010809', label='familial chronic myelocytic leukemia-like syndrome',...)}
     """
     path = urllib.parse.urljoin(URL, 'bulk-lookup')
     curies = {}
@@ -160,7 +165,23 @@ def batch_lookup(strings:list[str], size:int=10, **kwargs):
             else:
                 for s in chunk:
                     nodes = result.get(s, [])
-                    curies[s] = nodes[0].get('curie', None)
+                    translator_nodes = []
+                    for node in nodes: 
+                        n = TranslatorNode(node['curie'])
+                        if 'label' in node:
+                            n.label = node['label']
+                        if 'types' in node:
+                            n.types = node['types']
+                        if return_synonyms and 'synonyms' in node:
+                            n.synonyms = node['synonyms']
+                        translator_nodes.append(n)
+                    if return_top_response:
+                        if translator_nodes:
+                            curies[s] = translator_nodes[0]
+                        else:
+                            curies[s] = None
+                    else:
+                        curies[s] = translator_nodes
         else:
             raise requests.RequestException('Response from server had error, code ' + str(response.status_code) + ' ' + str(response))
     return curies
