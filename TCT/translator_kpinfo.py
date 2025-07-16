@@ -1,21 +1,30 @@
 
 # used May 30, 2025
+
 import requests
 import json
-import yaml
 import pandas as pd
 
 """This is the root URL for the resource."""
 URL = 'https://smart-api.info/api/query?q=tags.name:translator'
 
-def get_translator_kp_info():
+def get_translator_kp_info() -> (pd.DataFrame, dict[str, str]):
     """
     Get the SmartAPI Translator KP info from the smart-api.info API.
     Returns a DataFrame with the SmartAPI Translator KP info.
 
+    Returns
+    -------
+    smartapi_df : pandas.DataFrame
+        Dataframe containing information about the APIS [TODO]
+
+    API_names : dict
+        dict of API names to URLs
+
+
     Examples
     --------
-    >>> Translator_KP_info,APInames = get_SmartAPI_Translator_KP_info()
+    >>> Translator_KP_info, APInames = get_translator_kp_info()
     >>> print(Translator_KP_info.head())
     """
     

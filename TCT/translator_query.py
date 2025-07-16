@@ -5,13 +5,20 @@ import pandas
 from TCT import translator_metakg
 from TCT import translator_kpinfo
 
-def get_translator_API_predicates():
+def get_translator_API_predicates() -> (dict, pandas.DataFrame, dict):
     '''
     Get the predicates supported by each API.
 
     Returns
     --------
-    A dictionary of API names and their predicates.
+    API_names : dict[str, str]
+          dict of API names to URLs
+
+    metaKG : pandas.DataFrame
+          This is a dataframe that represents the meta KG for the KPs in the APInames input -   columns include [TODO].
+
+    API_predicates : dict[str, list]
+        A dictionary of API names and a list of their predicates.
 
     Examples
     --------
@@ -78,7 +85,6 @@ def query_KP(API_name_cur, query_json, APInames, API_predicates):
     without modifying the original query_json.
     """
     API_url_cur = APInames[API_name_cur]
-    from copy import deepcopy
     # deep‐copy so we never touch the caller’s data
     query_copy = deepcopy(query_json)
     # optimize on our private copy

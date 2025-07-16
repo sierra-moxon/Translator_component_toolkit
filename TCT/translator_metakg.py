@@ -31,10 +31,19 @@ def find_link(name):
         url = url+words[length-1]+"%29"
     return(url)
 
-def get_KP_metadata(APInames):
-
+def get_KP_metadata(APInames:dict[str, str]) -> pd.DataFrame:
     '''
     This function is used to get the metadata of the KPs in the APInames dictionary.
+
+    Parameters
+    ----------
+    APInames : dict
+        This is the second output of `TCT.translator_kpinfo.get_translator_kpinfo()`. This is a dict of API name to API URL.
+
+    Returns
+    -------
+    metaKG : pandas.DataFrame
+        This is a dataframe that represents the meta KG for the KPs in the APInames input - columns include [TODO].
 
     Examples
     --------
@@ -72,10 +81,31 @@ def get_KP_metadata(APInames):
     return(result_df)
 
 
-def add_new_API_for_query(APInames, metaKG, newAPIname, newAPIurl, newAPIpredicate, newAPIsubject, newAPIobject):
-
+def add_new_API_for_query(APInames:dict[str, str], metaKG:pd.DataFrame, newAPIname:str, newAPIurl:str, newAPIpredicate:str, newAPIsubject:str, newAPIobject:str):
     '''
     This function is used to add a new API beyond the current list of APIs for query
+
+    Parameters
+    ----------
+    APInames : dict
+        This is the second output of `TCT.translator_kpinfo.get_translator_kpinfo()`.
+
+    metaKG : pandas.DataFrame
+        This is the output of `get_kp_metadata`.
+
+    newAPIname : str
+
+    newAPIurl : str
+
+    newAPIpredicate : str
+
+    newAPIsubject : str
+
+    newAPIobject : str
+
+
+    Returns
+    -------
 
     Examples
     --------
@@ -92,7 +122,7 @@ def add_new_API_for_query(APInames, metaKG, newAPIname, newAPIurl, newAPIpredica
     return APInames, metaKG
 
 
-def add_plover_API(APInames, metaKG):
+def add_plover_API(APInames:dict[str, str], metaKG:pd.DataFrame):
     '''
     This function is used to add the Plover APIs developed by the CATRAX team to the APInames and metaKG.
 
@@ -104,6 +134,16 @@ def add_plover_API(APInames, metaKG):
     Multiomics, 
     Microbiome, 
     and RTX KG2.
+
+    Parameters
+    ----------
+    APInames : dict
+        This is the second output of `TCT.translator_kpinfo.get_translator_kpinfo()`. This is a dict of API name to API URL.
+
+    metaKG : pandas.DataFrame
+        This is the output of `get_kp_metadata`.
+
+
 
 
     Examples
