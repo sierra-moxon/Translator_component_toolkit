@@ -10,6 +10,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import ipycytoscape
 import yaml
+from TCT import name_resolver
 
 # plt.switch_backend('module://ipykernel.pylab.backend_inline')
 
@@ -2165,6 +2166,7 @@ def find_similar_category(query_json_cur_clean, ALL_categories):
     current_predicates2 = query_json_cur_clean['message']['query_graph']['nodes']['n1']['categories']
     output = ask_chatGPT4("The categories in the KG are: " + ','.join(ALL_categories) + ". The category in the current query are: " + ','.join(current_predicates1 + current_predicates2) + ". What categories are similar to the categories in the current query?")
     return(output)
+
 
 
 def visulize_path(input_node1_id, intermediate_node, input_node3_id, result, result2):
