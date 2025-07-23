@@ -2167,6 +2167,17 @@ def find_similar_category(query_json_cur_clean, ALL_categories):
     output = ask_chatGPT4("The categories in the KG are: " + ','.join(ALL_categories) + ". The category in the current query are: " + ','.join(current_predicates1 + current_predicates2) + ". What categories are similar to the categories in the current query?")
     return(output)
 
+def load_translator_resources():
+    """
+    Load the necessary resources for the Translator.
+    """
+    from . import translator_kpinfo
+    from . import translator_metakg
+
+    Translator_KP_info,APInames= translator_kpinfo.get_translator_kp_info()
+    metaKG = translator_metakg.get_KP_metadata(APInames) 
+    APInames,metaKG = translator_metakg.add_plover_API(APInames, metaKG)
+    return  APInames, metaKG, Translator_KP_info
 
 
 def visulize_path(input_node1_id, intermediate_node, input_node3_id, result, result2):
