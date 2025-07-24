@@ -5,7 +5,7 @@ import pandas
 from TCT import translator_metakg
 from TCT import translator_kpinfo
 
-def get_translator_API_predicates() -> (dict, pandas.DataFrame, dict):
+def get_translator_API_predicates() -> tuple[dict, pandas.DataFrame, dict]:
     '''
     Get the predicates supported by each API.
 
@@ -22,7 +22,7 @@ def get_translator_API_predicates() -> (dict, pandas.DataFrame, dict):
 
     Examples
     --------
-    >>> API_predicates = get_translator_API_predicates()
+    >>> API_names, metaKG, API_predicates = get_translator_API_predicates()
     '''
     Translator_KP_info,APInames= translator_kpinfo.get_translator_kp_info()
     print(len(Translator_KP_info))
