@@ -77,16 +77,55 @@ def build_query(subject_ids:list[str],
         return query_dict
 
 
-def query(url:str):
+def process_result(result:dict):
     """
-    TODO: unimplemented
+    Processes a TRAPI query result, returning a table of edges.
+
+    Params
+    ------
+
+    Returns
+    -------
+
+    Examples
+    --------
+    """
+
+
+def query(url:str, query:str):
+    """
+    Queries a single TRAPI endpoint.
 
     Params
     ------
     url : str
         The URL for the API endpoint.
+    query : str
+        A JSON string representing the query, as produced by build_query
 
     Returns
     -------
     TODO
+
+    Examples
+    --------
+    >>> dsf
+    """
+    # example: 1. get APIs, 2. get APIs that have the target object and subject types, and the target predicates. 3. build the query and run the query.
+    response = requests.post(url, json=query)
+    if response.status_code == 200:
+        # TODO
+        result = response.json().get("message", {})
+        kg = result.get("knowledge_graph", {})
+        edges = kg.get("edges", {})
+        if edges:
+            return result
+        elif "knowledge_graph" in result:
+            return None
+    else:
+        raise requests.RequestException('Response from server had error, code ' + str(response.status_code) + ' ' + str(response))
+
+
+def parallel_query(url_list:list[str]):
+    """
     """
