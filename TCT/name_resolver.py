@@ -185,3 +185,5 @@ def batch_lookup(strings:list[str], size: int=25, return_top_response:bool=True,
         else:
             raise requests.RequestException('Response from server had error, code ' + str(response.status_code) + ' ' + str(response))
     return curies
+
+

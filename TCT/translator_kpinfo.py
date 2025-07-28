@@ -138,3 +138,5 @@ def get_translator_kp_info() -> (pd.DataFrame, dict[str, str]):
         else:
             API_names[smartapi_df['title'].values[i]] = ci_url_list[i] 
     return smartapi_df, API_names
+
+

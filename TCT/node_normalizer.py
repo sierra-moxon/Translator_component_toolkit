@@ -70,3 +70,5 @@ def get_normalized_nodes(query: str | list[str],
             return normalized_dict
     else:
         raise requests.RequestException('Response from server had error, code ' + str(response.status_code))
+
+
