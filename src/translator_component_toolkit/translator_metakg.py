@@ -1,8 +1,7 @@
 import requests
 import json
 import pandas as pd
-from TCT import translator_metakg
-from TCT import translator_kpinfo
+
 
 def find_link(name):
     #pre = "https://dev.smart-api.info/api/metakg/consolidated?size=2000&q=%28api.x-translator.component%3AKP+AND+api.name%3A" # This works for the previous version
@@ -38,7 +37,7 @@ def get_KP_metadata(APInames:dict[str, str]) -> pd.DataFrame:
     Parameters
     ----------
     APInames : dict
-        This is the second output of `TCT.translator_kpinfo.get_translator_kpinfo()`. This is a dict of API name to API URL.
+        This is the second output of `translator_component_toolkit.translator_kpinfo.get_translator_kpinfo()`. This is a dict of API name to API URL.
 
     Returns
     -------
@@ -47,7 +46,7 @@ def get_KP_metadata(APInames:dict[str, str]) -> pd.DataFrame:
 
     Examples
     --------
-    >>> metaKG = TCT.get_KP_metadata(APInames) 
+    >>> metaKG = translator_component_toolkit.get_KP_metadata(APInames)
     >>> All_predicates = list(set(metaKG['Predicate']))
     All_categories = list((set(list(set(metaKG['Subject']))+list(set(metaKG['Object'])))))
     '''
@@ -88,7 +87,7 @@ def add_new_API_for_query(APInames:dict[str, str], metaKG:pd.DataFrame, newAPIna
     Parameters
     ----------
     APInames : dict
-        This is the second output of `TCT.translator_kpinfo.get_translator_kpinfo()`.
+        This is the second output of `translator_component_toolkit.translator_kpinfo.get_translator_kpinfo()`.
 
     metaKG : pandas.DataFrame
         This is the output of `get_kp_metadata`.
@@ -138,7 +137,7 @@ def add_plover_API(APInames:dict[str, str], metaKG:pd.DataFrame):
     Parameters
     ----------
     APInames : dict
-        This is the second output of `TCT.translator_kpinfo.get_translator_kpinfo()`. This is a dict of API name to API URL.
+        This is the second output of `translator_component_toolkit.translator_kpinfo.get_translator_kpinfo()`. This is a dict of API name to API URL.
 
     metaKG : pandas.DataFrame
         This is the output of `get_kp_metadata`.

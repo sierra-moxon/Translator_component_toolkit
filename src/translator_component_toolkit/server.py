@@ -10,23 +10,17 @@ This server provides access to biomedical translator tools including:
 - TRAPI protocol support
 """
 
-import sys
-import os
-
-# Add the TCT directory to the Python path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'TCT'))
-
 from mcp.server.fastmcp import FastMCP
 from mcp.shared.exceptions import McpError
 from mcp.types import ErrorData, INTERNAL_ERROR, INVALID_PARAMS
 
-# Import functions from TCT modules
-from name_resolver import lookup, synonyms, batch_lookup
-from node_normalizer import get_normalized_nodes
-from translator_kpinfo import get_translator_kp_info
-from translator_metakg import get_KP_metadata, add_new_API_for_query, add_plover_API
-from translator_query import get_translator_API_predicates, optimize_query_json, query_KP, parallel_api_query
-from trapi import query as trapi_query
+# Import functions from translator_component_toolkit modules using relative imports
+from .name_resolver import lookup, synonyms, batch_lookup
+from .node_normalizer import get_normalized_nodes
+from .translator_kpinfo import get_translator_kp_info
+from .translator_metakg import get_KP_metadata, add_new_API_for_query, add_plover_API
+from .translator_query import get_translator_API_predicates, optimize_query_json, query_KP, parallel_api_query
+from .trapi import query as trapi_query
 
 # Create unified MCP server
 mcp = FastMCP("translator-toolkit")

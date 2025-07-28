@@ -39,7 +39,7 @@ Repository = "https://github.com/NCATSTranslator/Translator_component_toolkit"
 Issues = "https://github.com/NCATSTranslator/Translator_component_toolkit/issues"
 
 [project.scripts]
-mcp-translator = "mcp_translator:main"
+mcp-translator = "translator_component_toolkit:main"
 
 [build-system]
 requires = ["hatchling"]

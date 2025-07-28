@@ -1,9 +1,9 @@
 import requests
 from copy import deepcopy
-import json
 import pandas
-from TCT import translator_metakg
-from TCT import translator_kpinfo
+from . import translator_metakg
+from . import translator_kpinfo
+
 
 def get_translator_API_predicates() -> (dict, pandas.DataFrame, dict):
     '''
@@ -123,7 +123,7 @@ def parallel_api_query(query_json, select_APIs, APInames, API_predicates,max_wor
 
     Examples
     --------
-    >>> result = TCT.parallel_api_query(API_URLs,query_json=query_json, max_workers=len(API_URLs1))
+    >>> result = translator_component_toolkit.parallel_api_query(API_URLs,query_json=query_json, max_workers=len(API_URLs1))
 
     '''
     # Parallel query
