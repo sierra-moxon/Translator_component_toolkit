@@ -6,8 +6,6 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-import TCT
-
 project = 'Translator Component Toolkit'
 copyright = '2025, Guangrong Qin, Yue Zhang'
 author = 'Guangrong Qin, Yue Zhang'

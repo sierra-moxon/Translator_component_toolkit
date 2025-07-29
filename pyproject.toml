@@ -1,0 +1,53 @@
+[project]
+name = "mcp-translator"
+version = "0.1.0"
+description = "Translator Component Toolkit - MCP Server for Biomedical Translator Tools"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    {name = "Guangrong Qin", email = "guangrong.qin@isbscience.org"}
+]
+license = {text = "MIT"}
+keywords = ["biomedical", "translator", "mcp", "knowledge-graph", "trapi"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+dependencies = [
+    "requests>=2.25.0",
+    "pandas>=1.3.0",
+    "fastmcp>=0.1.0",
+    "mcp>=1.2.0",
+    "seaborn>=0.11.0",
+    "matplotlib>=3.3.0",
+    "ipycytoscape>=1.3.0", 
+    "networkx>=2.6.0",
+    "numpy>=1.21.0",
+    "openai>=1.0.0",
+    "ipykernel>=6.0.0",
+    "pyyaml>=6.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/NCATSTranslator/Translator_component_toolkit"
+Repository = "https://github.com/NCATSTranslator/Translator_component_toolkit"
+Issues = "https://github.com/NCATSTranslator/Translator_component_toolkit/issues"
+
+[project.scripts]
+mcp-translator = "translator_component_toolkit.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/translator_component_toolkit"]
+
+[tool.uv]
+dev-dependencies = []

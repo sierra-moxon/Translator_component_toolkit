@@ -1,9 +1,0 @@
-requests
-jsons
-pandas
-seaborn
-matplotlib
-ipycytoscape
-networkx
-openai
-ipykernel

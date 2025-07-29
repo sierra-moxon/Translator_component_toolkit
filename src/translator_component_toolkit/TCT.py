@@ -1,16 +1,11 @@
 import requests
-import json
 import pandas as pd
 import  seaborn as sns
-import matplotlib.pyplot as plt
-import ipycytoscape
 import networkx as nx
 import numpy as np
-import openai
-import matplotlib
 import matplotlib.pyplot as plt
 import ipycytoscape
-
+import yaml
 
 # plt.switch_backend('module://ipykernel.pylab.backend_inline')
 
@@ -20,10 +15,24 @@ from IPython.display import display
 def TCT_help(func):
     print(func.__doc__)
 
-
+# list all functions in translator_component_toolkit
+def list_functions():
+    import inspect
+    functions = []
+    for name, obj in inspect.getmembers(__import__(__name__)):
+        if inspect.isfunction(obj):
+            functions.append(name)
+    return functions
     
 # used. Jan 5, 2024
 def get_Translator_APIs():
+    '''
+    Get a list of Translator APIs from the smart-api.info and return the detailed information for each API in a data frame and the list of API names.
+
+    Examples
+    --------
+    >>> Translator_KP_info,APInames= translator_component_toolkit.get_SmartAPI_Translator_KP_info()
+    '''
     Translator_APIs = []
     #Translator_apps_url = "https://smart-api.info/api/query?q=tags.name:translator&fields=info,_meta,tags&meta=1&size=500"
     Translator_apps_url = "https://dev.smart-api.info/api/query?q=tags.name:translator&fields=info,_meta,tags&meta=1&size=500"
@@ -32,9 +41,250 @@ def get_Translator_APIs():
         Translator_APIs.append(app['info']['title'])
     return Translator_APIs
 
+# used May 30, 2025
+# used May 30, 2025
+"""This is the root URL for the resource."""
+URL = 'https://smart-api.info/api/query?q=tags.name:translator'
+
+def get_SmartAPI_Translator_KP_info():
+    """
+    Get the SmartAPI Translator KP info from the smart-api.info API.
+    Returns a DataFrame with the SmartAPI Translator KP info.
+
+    
+
+    Examples
+    --------
+    >>> Translator_KP_info,APInames = get_SmartAPI_Translator_KP_info('AML')
+
+    """
+    
+    import requests
+    import json
+    import yaml
+    import pandas as pd
+
+    # several APIs should be excluded:
+    #https://smart-api.info/ui/ac9c2ad11c5c442a1a1271223468ced1
+
+    # Get x-bte smartapi specs
+    url = "https://smart-api.info/api/query?q=tags.name:translator AND tags.name:trapi&size=1000&sort=_seq_no&raw=1&fields=paths,servers,tags,components.x-bte*,info,_meta"
+    response = requests.get(url)
+    try:
+        response.raise_for_status()
+    except Exception:
+        print(f"error downloading smartapi specs: {response.status_code}")
+        exit()
+
+    content = json.loads(response.content)
+    smartapis = content["hits"]
+
+    id_list = []
+    title_list = []
+    prod_url_list = []
+    ci_url_list = []
+    test_url_list = []
+    for api in smartapis:
+        
+        
+        ci_found = False
+        test_found = False
+        prod_found = False
+        for i in range(len(api['servers'])):
+            
+            server = api['servers'][i]
+            if 'x-maturity' not in server:
+                print(f"Skipping server without x-maturity: {server}")
+                
+            else:
+                if server['x-maturity'] == 'production':
+                    # if prod_ur is not ars-prod.transltr.io
+                    if server['url'] == 'https://ars-prod.transltr.io':
+                        prod_url = server['url'] + '/ars/api/submit/'
+                    else:
+                        # if prod_url does not end with /, add '/query/' to the end
+                        if server['url'].endswith('/'):
+                            prod_url = server['url'] + 'query/'
+                        else:
+                            # if prod_url does not end with /, add '/query/' to the end
+                            prod_url = server['url'] + '/query/'
+                    
+                    prod_found = True
+                
+                if server['x-maturity'] == 'staging' or server['x-maturity'] == 'development':
+                    # if ci_url is not ars.ci.transltr.io
+                    if server['url'] == 'https://ars.ci.transltr.io':
+                        ci_url = server['url'] + '/ars/api/submit/'
+                    else:
+                        # if ci_url does not end with /, add '/query/' to the end
+                        if server['url'].endswith('/'):
+                            ci_url = server['url'] + 'query/'
+                        else:
+                            # if ci_url does not end with /, add '/query/' to the end
+                            ci_url = server['url'] + '/query/'
+                    ci_found = True
+
+                if server['x-maturity'] == 'testing':
+                    # if test_url is not ars-test.transltr.io
+                    if server['url'] == 'https://ars.test.transltr.io':
+                        test_url = server['url'] + '/ars/api/submit/'
+                    else:
+                        # if test_url does not end with /, add '/query/' to the end
+                        if server['url'].endswith('/'):
+                            test_url = server['url'] + 'query/'
+                        else:
+                            # if test_url does not end with /, add '/query/' to the end
+                            test_url = server['url'] + '/query/'
+
+                    test_found = True
+
+        if not (prod_found or ci_found or test_found):
+            print(api['info']['title'])
+            print(f"Skipping server without production, staging or testing: {server}")
+        else:
+            id_list.append('https://smart-api.info/ui/'+api['_id'])
+            title_list.append(api['info']['title'])
+            if prod_found:
+                prod_url_list.append(prod_url)
+            else:
+                prod_url = prod_url_list.append(None)
+
+            if ci_found:
+                ci_url_list.append(ci_url)
+            else:
+                ci_url = ci_url_list.append(None)
+            if test_found:
+                test_url_list.append(test_url)
+            else:
+                test_url = test_url_list.append(None)
+                
+    # write all the smartapis to a dataframe
+
+    smartapi_df = pd.DataFrame({
+        'id': id_list,
+        'title': title_list,
+        'prod_url': prod_url_list,
+        'ci_url': ci_url_list,
+        'test_url': test_url_list,
+    })
+    #smartapi_df = smartapi_df.set_index('id')
+
+    # remove the excluded APIs from the dataframe
+    #excluded_APIs = ['https://smart-api.info/ui/ac9c2ad11c5c442a1a1271223468ced1',#RaMP]
+    
+    #smartapi_df = smartapi_df[~smartapi_df['id'].isin(excluded_APIs)]
+
+    API_names = {}
+    for i in range(len(smartapi_df)):
+        if prod_url_list[i] is not None:
+            #API_names[smartapi_df['title'][i]] = smartapi_df['prod_url'][i] + 'query/'
+            API_names[smartapi_df['title'].values[i]] = prod_url_list[i]
+        else:
+            API_names[smartapi_df['title'].values[i]] = ci_url_list[i] 
+    return smartapi_df, API_names
+
 # used Dec 5, 2023 (Example_query_one_hop_with_category.ipynb)
 def list_Translator_APIs():
     APInames = {
+            'Sri-name-resolver':'https://name-lookup.ci.transltr.io/query/', #https://smart-api.info/ui/9995fed757acd034ef099dbb483c4c82 
+            #'Monarch API':'https://api-v3.monarchinitiative.org/query/' #https://smart-api.info/ui/d22b657426375a5295e7da8a303b9893
+            #Complex Portal Web Service : #https://smart-api.info/ui/326eb1e437303bee27d3cef29227125d
+            'Sri-answer-appraiser(Trapi v1.5.0)':'https://answerappraiser.renci.org/get_appraisal/', #https://smart-api.info/ui/6dcc5454fe4e0095090d8a956781c438
+            #LitVar API : dca415f2d792976af9d642b7e73f7a41
+            #CTD API : 0212611d1c670f9107baf00b77f0889a
+            #EBI Proteins API : 43af91b3d7cae43591083bff9d75c6dd
+            #Ontology Lookup Service API : 1c056ffc7ed0dd1229e71c4752239465
+            'Cqs(Trapi v1.5.0)':'https://cqs-dev.apps.renci.org/query/', #https://smart-api.info/ui/c359a127dc8824d90cef436d3dce71d4
+            'Workflow-runner(Trapi v1.5.0)':'https://translator-workflow-runner.renci.org/query/', #https://smart-api.info/ui/6a3507ad6f709844d1b2b89691898a93
+            'Automat-monarchinitiative(Trapi v1.5.0)':'https://automat.ci.transltr.io/monarch-kg/query/',#https://smart-api.info/ui/6b88f83127513bd350e6962218ea84f4
+            #QuickGO API : 1f277e1563fcfd124bfae2cc3c4bcdec
+            #RaMP API v1.0.1 : ac9c2ad11c5c442a1a1271223468ced1 # need to check carefully.
+            'Connections Hypothesis Provider API':'https://chp-api.transltr.io/query/', #https://smart-api.info/ui/412af63e15b73e5a30778aac84ce313f
+            'Automat-genome-alliance(Trapi v1.5.0)' :'https://automat.ci.transltr.io/genome-alliance/query/', #https://smart-api.info/ui/b4c868db33b95b4890faeeefd5800552
+            'mediKanren' : 'https://medikanren-trapi.transltr.io/query/', #https://smart-api.info/ui/c563a58be4aacb68d10ba0ceb6b52255
+            'Automat-hgnc(Trapi v1.5.0)':'https://automat.transltr.io/hgnc/query/', #'https://smart-api.info/ui/8671309d2b94e413a4c1f9a9f82e4660'
+            'Automat-hmdb(Trapi v1.5.0)':'https://automat.transltr.io/hmdb/query/' ,# 0a1c0f46f4950b82b1aa7dad27aad10a
+            'Automat-gwas-catalog(Trapi v1.5.0)' :'https://automat.transltr.io/gwas-catalog/query/', #349fed5531c094c33f10c071efe9d0de
+            'Automat-gtopdb(Trapi v1.5.0)': 'https://automat.transltr.io/gtopdb/query/',# 759df287a21c30cd514df323be02a84b
+            'Autonomous Relay System (ARS) TRAPI' : 'https://ars-prod.transltr.io/ars/api/submit/', #4c12efd48ced755ac4b72b1922202ec2
+            'Automat-robokop(Trapi v1.5.0)' : 'https://automat.transltr.io/robokopkg/query/',# 4f9c8853b721ef1f14ecee6d92fc19b5
+            'Automat-binding-db(Trapi v1.5.0)': 'https://automat.transltr.io/binding-db/query/', #a9d6ee341d8ea4c7d3ae9ed0941cb274
+            'Automat-ehr-may-treat-kp(Trapi v1.5.0)' : 'https://automat.renci.org/ehr-may-treat-kp/query/',#eb4e66886fe5c178ae41977cea2c6307
+            #Automat-gtex(Trapi v1.5.0) : eef72049e4e01c020b7799f711e0e65b,
+            #Automat-pharos(Trapi v1.5.0) : 1f057c53d42694686369f0e542f965c6
+            #Automat-reactome(Trapi v1.5.0) : 61b41c5d9b90eb8ad16e037f9a87d593
+            #Sri-node-normalizer(Trapi v1.5.0) : 1c2eb8d02b4796c6a657c3363c0657dc
+            #Automat-human-goa(Trapi v1.5.0) : cb7a43d444cb3dcbe8e3c78d314334cf
+            #Automat-cam-kp(Trapi v1.5.0) : 7ab0209ea8590341d8e5d0166cac3d2f
+            #Automat-viral-proteome(Trapi v1.5.0) : 2aca41fc6c3dc426ec6583d42603be02
+            #Aragorn(Trapi v1.5.0) : 1dad992a6ce8f680e59a5ea09d90670d
+            #Automat-drug-central(Trapi v1.5.0) : 673b9fc76973dfa5fe3ed151fdbfc807
+            #Automat-ubergraph(Trapi v1.5.0) : dde0552a37fc136526216148ff7594a0
+            #Automat-string-db(Trapi v1.5.0) : 7984a621a28c109c5c09f65fed0e7ea7
+            #Automat-hetionet(Trapi v1.5.0) : a5fe24f987331b58191e67598118f369
+            #Automat-ctd(Trapi v1.5.0) : f82c01b15c46e024212c1a3271aaef0b
+            #Automat-intact(Trapi v1.5.0) : b4023595664163e0aec5e825da150e16
+            #Automat-ehr-clinical-connections-kp(Trapi v1.5.0) : 6f4dd91bc56fce4f597bc44153cf418e
+            #Automat-icees-kg(Trapi v1.5.0) : c64d583402f21cc85810d33befe49c86
+            #Automat-panther(Trapi v1.5.0) : 3f78d3fb8a7a577fbc7cc0a913ac3fc5
+            #Biolink Lookup : 02f84c50043e94970316568439b7b384
+            'COHD TRAPI' : 'https://cohd-api.transltr.io/api/query/', ##d4290b6b5741e6da6cc6a6f42e0cfdb5
+            #'Text Mined Cooccurrence API' : "https://cooccurence.ci.transltr.io/query/", #aa9c668df9d217409891cc7afb7ac039
+            'Text Mined Cooccurrence API' : "https//cooccurrence.transltr.io/query", #71fa2e0f0f1fe1ec67f4ddb719db5ef3
+            #BioThings Rhea API : 03283cc2b21c077be6794e1704b1d230
+            #SmartAPI API : 27a5b60716c3a401f2c021a5b718c5b1
+            #MyDisease.info API : 671b45c0301c8624abbd26ae78449ca2
+            #MyVariant.info API : 09c8782d9f4027712e65b95424adba79
+            #BioThings UBERON API : ec6d76016ef40f284359d17fbf78df20
+            #OpenPredict API : 025600054bd8d6fb14ee66ee9d4a9830
+            #MyGene.info API : 59dce17363dce279d389100834e43648
+            #Answer-coalesce(Trapi v1.5.0) : fe8bb783ff710ab4e176f38c5f7777af
+            #BioThings HPO API : a5b0ec6bfde5008984d4b6cde402d61f
+            #Drug Approvals KP - TRAPI 1.5.0 : edc04feaf16c12424737988ce2e90d60
+            #Gene-List Network Enrichment Analysis : 5c8740542b4444d4f85c2e23c670b952
+            #MolePro : 1901bab8d33bb70b124f400ec1cfdba3
+            #Multiomics KP - TRAPI 1.5.0 : 1b6de23ed3c4e0713b20794477ba1e39
+            #Microbiome KP - TRAPI 1.5.0 : a8be4ea3fe8fa80a952ead0b3c5e4bc1
+            #BioThings GO Biological Process API : cc857d5b7c8b7609b5bbb38ff990bfff
+            #imProving Agent for TRAPI 1.5 : 415c3b1a85ead4ceb58caf00dee9b24e
+            #Clinical Trials KP - TRAPI 1.5.0 : e51073371d7049b9643e1edbdd61bcbd
+            #BioThings EBIgene2phenotype API : 1f47552dabd67351d4c625adb0a10d00
+            #BioThings RARe-SOURCE API : b772ebfbfa536bba37764d7fddb11d6f
+            #PharmGKB REST API : bde72db681ec0b8f9eeb67bb6b8dd72c
+            #BioThings DDInter API : 00fb85fc776279163199e6c50f6ddfc6
+            #MyChem.info API : 8f08d1446e0bb9c2b323713ce83e2bd3
+            #BioThings BindingDB API : 38e9e5169a72aee3659c9ddba956790d
+            #BioThings PFOCR API : edeb26858bd27d0322af93e7a9e08761
+            #BioThings MGIgene2phenotype API : 77ed27f111262d0289ed4f4071faa619
+            #BioThings FooDB API : f1b8f64c316a01d1722f0fb842499fe5
+            #Genetics Data Provider for NCATS Biomedical Translator Reasoners : db981dff8d93dcb0cfab5dbee8afbb40
+            #BioThings GO Molecular Function API : 34bad236d77bea0a0ee6c6cba5be54a6
+            #BioThings BioPlanet Pathway-Disease API : 55a223c6c6e0291dbd05f2faf27d16f4
+            #BioThings DISEASES API : a7f784626a426d054885a5f33f17d3f8
+            #BioThings BioPlanet Pathway-Gene API : b99c6dd64abcefe87dcd0a51c249ee6d
+            #BioThings GO Cellular Component API : f339b28426e7bf72028f60feefcd7465
+            #SPOKE KP for TRAPI 1.5 : 7f70cdfaeb801501da08dacc294e8b9f
+            #BioThings IDISK API : 32f36164fabed5d3abe6c2fd899c9418
+            #BioThings FoodData Central API : 895ec14a3650ec7ad85959a2d1554e2f
+            #BioThings AGR API : 68f12100e74342ae0dd5013d5f453194
+            #Translator Annotation Service : 5a4c41bf2076b469a0e9cfcf2f2b8f29
+            #BioThings InnateDB API : e9eb40ff7ad712e4e6f4f04b964b5966
+            #BioThings repoDB API : 1138c3297e8e403b6ac10cff5609b319
+            #BioThings GTRx API : 316eab811fd9ef1097df98bcaa9f7361
+            #BioThings Explorer (BTE) TRAPI : dc91716f44207d2e1287c727f281d339
+            #RTX KG2 - TRAPI 1.5.0 : a6b575139cfd429b0a87f825a625d036
+            #BioThings SuppKG API : b48c34df08d16311e3bca06b135b828d
+            #Knowledge Collaboratory API : 8601da411b8681dbbc32239ceb0f1a55
+            ##Service Provider TRAPI : 36f82f05705c317bac17ddae3a0ea2f0
+            #Multiomics EHR Risk KP API : d86a24f6027ffe778f84ba10a7a1861a
+            #Multiomics Wellness KP API : 02af7d098ab304e80d6f4806c3527027
+            #BioThings DGIdb API : e3edd325c76f2992a111b43a907a4870
+            #BioThings SEMMEDDB API : 1d288b3a3caf75d541ffaae3aab386c8
+            'Multiomics BigGIM-DrugResponse KP API' : 'https://biothings.ci.transltr.io/biggim_drugresponse_kg/query/', #adf20dd6ff23dfe18e8e012bde686e31
+            #Biothings Therapeutic Target Database API : e481efd21f8e8c1deac05662439c2294
+            #Text Mining Targeted Association API : 978fe380a147a8641caf72320862697b
+           'ARAX Translator Reasoner - TRAPI 1.5.0' : 'https://arax.transltr.io/api/arax/v1.4/query/', # 03e63fbd5ed251bce08cb5801b6b169b
+
         'Automat-ctd(Trapi v1.4.0)':"https://automat.transltr.io/ctd/1.4/query",
         #'Automat-sri-reference-kg(Trapi v1.4.0)':"",
         #'Autonomous Relay System (ARS) TRAPI':"",
@@ -74,7 +324,8 @@ def list_Translator_APIs():
         "ARAX Translator Reasoner - TRAPI 1.4.0":"https://arax.transltr.io/api/arax/v1.4/query",
         "RTX KG2 - TRAPI 1.4.0":"https://arax.ncats.io/api/rtxkg2/v1.4/query",
         "SPOKE KP for TRAPI 1.4":"https://spokekp.transltr.io/api/v1.4/query",
-        "Multiomics BigGIM-DrugResponse KP API":"https://bte.test.transltr.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31/query",
+        "Multiomics BigGIM-DrugResponse KP API":"https://bte.transltr.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31/query",
+        #"Multiomics BigGIM-DrugResponse KP API":"https://bte.test.transltr.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31/query",
         "Multiomics ClinicalTrials KP":"https://api.bte.ncats.io/v1/smartapi/d86a24f6027ffe778f84ba10a7a1861a/query",
         "Multiomics Wellness KP API":"https://api.bte.ncats.io/v1/smartapi/02af7d098ab304e80d6f4806c3527027/query",
         "Multiomics EHR Risk KP API":"https://api.bte.ncats.io/v1/smartapi/d86a24f6027ffe778f84ba10a7a1861a/query",
@@ -108,7 +359,6 @@ def list_Translator_APIs():
         "Automat-ubergraph(Trapi v1.4.0)": "https://automat.ci.transltr.io/ubergraph/1.4/query",
         "Automat-ubergraph-nonredundant(Trapi v1.4.0)": "https://automat.ci.transltr.io/ubergraph-nonredundant/1.4/query",
         "Automat-viral-proteome(Trapi v1.4.0)": "https://automat.ci.transltr.io/viral-proteome/1.4/query",
-        #"COHD TRAPI":"https://cohd-api.transltr.io/api/query", # 500 error
         "CTD API":"https://automat.ci.transltr.io/ctd/1.4/query",
         "Connections Hypothesis Provider API":"https://chp-api.transltr.io/query", #no knowledge_graph is defined in the response
         "MyGene.info API":"https://api.bte.ncats.io/v1/smartapi/59dce17363dce279d389100834e43648/query", #check with chunlei
@@ -142,96 +392,31 @@ def list_Translator_APIs():
     }
     return(APInames)
 
-# used Dec 5, 2023
-def find_link(name):
-    #pre = "https://dev.smart-api.info/api/metakg/consolidated?size=2000&q=%28api.x-translator.component%3AKP+AND+api.name%3A" # This works for the previous version
-    pre = "https://smart-api.info/api/metakg/consolidated?size=2000&q=%28api.x-translator.component%3AKP+AND+api.name%3A" 
-    end = "%5C%28Trapi+v1.4.0%5C%29%29"
-    if '(Trapi v1.4.0)' in name:
-        url = pre
-        name_raw = name.split("(")[0]
-        words = name_raw.split(" ")
-    
-        length = len(words)
-        if length == 1:
-            url = url + words[0] + end
-        else:
-            for i in range(0,length-1):
-                url = url + words[i] + "+"
-            url = url+words[length-1]+end
-    
-    else:
-        words = name.split(" ")
-        url = pre
-        length = len(words)
-        
-        for i in range(0,length-1):
-            url = url + words[i] + "+"
-        url = url+words[length-1]+"%29"
-    return(url)
 
-# used
-# Finalized version: Dec 5, 2023 (Example_query_one_hop_with_category.ipynb)
-def get_KP_metadata(APInames):
 
-    '''
-    APInames = get_API_list()
-    '''
 
-    result_df = pd.DataFrame()
-    API_list = []
-    URL_list = []
-    KG_category_list = []
-    subject_list = []
-    object_list = []
-    url_list = []
-    #for KP in KPnames:
-    for KP in APInames.keys():
-        json_text ={}
-        if KP == "RTX KG2 - TRAPI 1.4.0": 
-            #print("ARAX KG2 - TRAPI 1.4.0")
-            text =requests.get("https://dev.smart-api.info/api/metakg/consolidated?size=20&q=%28api.x-translator.component%3AKP+AND+api.name%3ARTX+KG2+%5C-+TRAPI+1%5C.4%5C.0%29").text  # This works for the previous version
-            #text =requests.get("https://smart-api.info/api/metakg/consolidated?size=20&q=%28api.x-translator.component%3AKP+AND+api.name%3ARTX+KG2+%5C-+TRAPI+1%5C.4%5C.0%29").text  # This works for the previous version
-            json_text = json.loads(text)
-        else:
-            text = requests.get(find_link(KP)).text
-            #text = requests.get(dic_KP_metadata[KP]).text
-            json_text = json.loads(text)
 
-        for i in (json_text['hits']):
-            KG_category_list.append("biolink:"+i['_id'].split("-")[1])
-            API_list.append(KP)
-            subject_list.append('biolink:'+i['_id'].split("-")[0])
-            object_list.append('biolink:'+i['_id'].split("-")[2])
-            url_list.append(APInames[KP])
-
-    result_df = pd.DataFrame({ 'API': API_list, 'KG_category': KG_category_list, "Subject":subject_list, "Object":object_list, "URL":url_list})
-    #result_df.to_csv("KP_metadata.csv", index=False)
-    return(result_df)
-
-# used
-def add_new_API_for_query(APInames, metaKG, newAPIname, newAPIurl, newAPIcategory, newAPIsubject, newAPIobject):
-
-    '''
-    This function is used to add a new API beyond the current list of APIs for query
-    Example: APInames, metaKG = add_new_API_for_query(APInames, metaKG, "BigGIM_BMG", "http://127.0.0.1:8000/find_path_by_predicate", "Gene-physically_interacts_with-gene", "Gene", "Gene")
-
-    '''
-    APInames[newAPIname] = newAPIurl
-
-    new_row = pd.DataFrame({"API":newAPIname,
-                            "KG_category":newAPIcategory,
-                            "Subject":newAPIsubject, "Object":newAPIobject,
-                            "URL":newAPIurl}, index=[0])
-    metaKG = pd.concat([metaKG, new_row], ignore_index=True)
-    return APInames, metaKG
 
 # used. Dec 5, 2023 (Example_query_one_hop_with_category.ipynb)
 def select_API(sub_list,obj_list, metaKG):
     '''
+    selects the APIs that can connect the given subject and object categories in the meta knowledge graph.
+    
     sub_list = ["biolink:Gene", "biolink:Protein"]
     obj_list = ["biolink:Gene", "biolink:Disease"]
-    
+
+    ---------
+    Example:
+    >>> sub_list = ["biolink:Gene", "biolink:Protein"]
+    >>> obj_list = ["biolink:Gene", "biolink:Disease"]
+    >>> 
+    >>> Translator_KP_info,APInames= translator_kpinfo.get_translator_kp_info()
+    >>> print(len(Translator_KP_info))
+    >>> metaKG = translator_metakg.get_KP_metadata(APInames) 
+    >>> print(metaKG.shape)
+    >>> APInames,metaKG = translator_metakg.add_plover_API(APInames, metaKG)
+    >>> selected_apis = select_API(sub_list, obj_list, metaKG)
+    >>> print(selected_apis)
     '''
     new_sub_list = sub_list
     new_obj_list = obj_list
@@ -246,14 +431,43 @@ def select_API(sub_list,obj_list, metaKG):
     df = pd.concat([df1,df2])
     return(list(set(df['API'].values)))
 
+
+
 # used. Dec 5, 2023  (Example_query_one_hop_with_category.ipynb)
 def select_concept(sub_list,obj_list,metaKG):
+    '''
+    Selects the predicates connecting the given subject and object categories in the meta knowledge graph.
+    '''
     #result_df = pd.read_csv("KP_metadata.csv")
     df1 = metaKG.loc[(metaKG['Subject'].isin(sub_list)) & (metaKG['Object'].isin(obj_list))]
     df2 = metaKG.loc[(metaKG['Subject'].isin(obj_list)) & (metaKG['Object'].isin(sub_list))]
     df = pd.concat([df1,df2])
-    return(set(list(df['KG_category'])))
+    return(set(list(df['Predicate'])))
+def sele_predicates_API(input_node1_category,input_node2_category,metaKG, APInames):
+    '''
+    Selects predicates, APIs, and API URLs for the given input node categories.
 
+    -----------
+    Example:
+    >>> sele_predicates, sele_APIs, API_URLs = sele_predicates_API(input_node1_category,input_node2_category,metaKG, APInames)
+    
+    '''
+    sele_predicates = list(set(select_concept(sub_list=input_node1_category,
+                                                 obj_list=input_node2_category,
+                                                 metaKG=metaKG)))
+    sele_APIs = select_API(sub_list=input_node1_category,
+                           obj_list=input_node2_category,
+                           metaKG=metaKG)
+    
+    API_URLs = get_Translator_API_URL(sele_APIs, APInames)
+    if len(sele_predicates) == 0:
+        print("No predicates found for the given categories.")
+    if len(sele_APIs) == 0:
+        print("No APIs found for the given categories.")
+    if len(API_URLs) == 0:
+        print("No API URLs found for the given categories.")
+
+    return sele_predicates, sele_APIs, API_URLs
 # used. Dec 5, 2023 (Example_query_one_hop_with_category.ipynb)
 def get_Translator_API_URL(API_sele, APInames):
     API_URL = []
@@ -373,7 +587,6 @@ def visulization_one_hop_ranking_input_as_list(result_ranked_by_primary_infores,
     primary_infore_list = []
     aggregator_infore_list = []
 
-    from io import BytesIO
     for i in range(0, result_ranked_by_primary_infores.shape[0]):
         oupput_node = result_ranked_by_primary_infores['output_node'][i]
         type_of_node = result_ranked_by_primary_infores['type_of_nodes'][i]
@@ -487,7 +700,6 @@ def visulization_one_hop_ranking(result_ranked_by_primary_infores,result_parsed 
     primary_infore_list = []
     aggregator_infore_list = []
 
-    from io import BytesIO
     for i in range(0, result_ranked_by_primary_infores.shape[0]):
         oupput_node = result_ranked_by_primary_infores['output_node'][i]
         type_of_node = result_ranked_by_primary_infores['type_of_nodes'][i]
@@ -591,20 +803,23 @@ def plot_heatmap(predicates_by_nodes_df,num_of_nodes = 20,
                                  output_png="NE_heatmap.png"):
     #matplotlib.use('Agg')
     
-    title = "Ranking of one-hop nodes by primary infores"
-    ylab = "infores"
+    #title = "Ranking of one-hop nodes by primary infores"
+    #ylab = "infores"
     df = predicates_by_nodes_df.iloc[:,0:num_of_nodes]
     colnames = list(df.columns)
     # create teh figure and subplot
-    fig = plt.figure( figsize=(0.8+df.shape[1]*0.1,3.5),dpi = 300)
+    fig = plt.figure( figsize=(0.8+df.shape[1]*0.11,3.5),dpi = 300)
     ax = fig.add_subplot(111)
 
     # create the heatmap
     # heatmap with border
     p1 = sns.heatmap(df, cmap="Blues", cbar=False, ax=ax, linecolor='grey', linewidth=0.2)
+    # Adjust font size for x and y tick labels
+    p1.set_xticklabels(p1.get_xticklabels(), rotation=90, fontsize=fontsize)
+    p1.set_yticklabels(p1.get_yticklabels(), fontsize=fontsize)
 
-    p1.set_title(title)
-    p1.set_ylabel(ylab)
+    #p1.set_title(title)
+    #p1.set_ylabel(ylab)
     print(p1.get_xticklabels())
     # set xticklabels with colnames
 
@@ -711,100 +926,221 @@ def format_query_json(subject_ids, object_ids, subject_categories, object_catego
     query_json_temp = {
         "message": {
             "query_graph": {
-                "nodes": {
-                    "n0": {
-                        "ids":[],
-                        "categories":[]
-                    },
-                    "n1": {
-                        #"ids":[],
-                        "categories":[]
-                }
-                },
+                
                 "edges": {
-                    "e1": {
-                        "subject": "n0",
-                        "object": "n1",
+                    "e00": {
+                    #"e1": {
+                        "subject": "n01",
+                        "object": "n00",
                         "predicates": predicates
-                    }
+                        }
+                    },
+                "nodes": {
+                    "n00": {    
+                        "ids":subject_ids, # required
+                        #"categories":[] # optional, if not provided, it will be empty
+                        },
+                    "n01": {
+                        #"ids":[],
+                        "categories":[] # required
+                        }}
                 }
             }
         }
-    }
 
     if len(subject_ids) > 0:
-        query_json_temp["message"]["query_graph"]["nodes"]["n0"]["ids"] = subject_ids
-    if len(object_ids) > 0:
-        query_json_temp["message"]["query_graph"]["nodes"]["n1"]["ids"] = object_ids
+        #query_json_temp["message"]["query_graph"]["nodes"]["n0"]["ids"] = subject_ids
+        query_json_temp["message"]["query_graph"]["nodes"]["n00"]["ids"] = subject_ids
 
-    if len(subject_categories) > 0:
-        query_json_temp["message"]["query_graph"]["nodes"]["n0"]["categories"] = subject_categories
+    #if len(object_ids) > 0:
+        #query_json_temp["message"]["query_graph"]["nodes"]["n1"]["ids"] = object_ids
+        #query_json_temp["message"]["query_graph"]["nodes"]["n00"]["ids"] = object_ids
+
+    #if len(subject_categories) > 0:
+    #    query_json_temp["message"]["query_graph"]["nodes"]["n01"]["categories"] = subject_categories
 
     if len(object_categories) > 0:
-        query_json_temp["message"]["query_graph"]["nodes"]["n1"]["categories"] = object_categories
+        #query_json_temp["message"]["query_graph"]["nodes"]["n1"]["categories"] = object_categories
+        query_json_temp["message"]["query_graph"]["nodes"]["n01"]["categories"] = object_categories
 
     if len(predicates) > 0:
-        query_json_temp["message"]["query_graph"]["edges"]["e1"]["predicates"] = predicates
+        query_json_temp["message"]["query_graph"]["edges"]["e00"]["predicates"] = predicates
 
     return(query_json_temp)
 
-# used. Dec 5, 2023 (Example_query_one_hop_with_category.ipynb)
-def query_KP(remoteURL, query_json):
-    # Single query
-    response = requests.post(remoteURL, json=query_json)
-    #print(response.status_code)
-    if response.status_code == 200:
-        #print(response.json())[0]
-        if "message" in response.json():
-            result = response.json()["message"]
-            #print(result) # revised Dec 1, 2023
-            if "knowledge_graph" in result:
-                #return(result['knowledge_graph'])
-                print("Success!" + remoteURL)
-                return(result)
-                
-            else:
-                print("Warning:" + remoteURL + "no knowledge_graph in response.")
-                return()
-        else:
-            print("Warning:" + remoteURL + "no message in response.")
-            return()
+
+def Neiborhood_finder(input_node, node2_categories, APInames, metaKG, API_predicates, input_node_category = []):
+    """
+    This function is used to find the neighborhood of a given input node with intermediate categories.
+    
+    --------------
+    Parameters:
+    input_node (str): The input node, can be a gene name, protein name, or any other identifier.
+    node2_categories (list): A list of intermediate categories to be used in the neighborhood finding process.
+    APInames (dict): A dictionary containing the names of the APIs to be used.
+    metaKG (DataFrame): The metadata knowledge graph containing information about the APIs and their predicates.
+    API_predicates (dict): A dictionary containing the predicates for each API.
+    input_node_category (list): Optional. A list of categories for the input node. If empty, it will be derived from the input node's types.
+    
+    --------------
+    Returns:
+    input_node_id (str): The curie id of the input node.
+    result (dict): The result of the query for the input node.
+    result_parsed (DataFrame): The parsed results for the input node.
+    result_ranked_by_primary_infores (DataFrame): The ranked results based on primary infores.
+    
+    --------------
+    Example:
+    >>> input_node_id, result, result_parsed, result_ranked_by_primary_infores1 = Neiborhood_finder('Ovarian cancer',
+                                                                                            node2_categories = ['biolink:SmallMolecule', 'biolink:Drug', 'biolink:ChemicalEntity'],
+                                                                                            APInames = APInames,
+                                                                                            metaKG = metaKG,
+                                                                                            API_predicates = API_predicates)   
+    --------------
+    
+    """
+    from src.translator_component_toolkit import name_resolver
+    from src.translator_component_toolkit import translator_query
+
+    # Step 1: Resolve the input node to get its curie id and categories
+    input_node_info = name_resolver.lookup(input_node)
+    input_node_id = input_node_info.curie
+    print(input_node_id)
+    
+    if len(input_node_category) == 0:
+        input_node_category = input_node_info.types 
     else:
-        print("Warning Code:" + str(response.status_code) + ":" +remoteURL  )
-        return()
+        input_node_category = list(set(input_node_category).intersection(set(input_node_info.types)))
+        if len(input_node_category) == 0:
+            input_node_category = input_node_info.types
+
+    # Step 2: Select predicates and APIs based on the intermediate categories
+    sele_predicates, sele_APIs, API_URLs = sele_predicates_API(input_node_category,
+                                                                node2_categories,
+                                                                metaKG, APInames)
+
+    # Step 3: Format the query JSON for the input node
+    query_json = format_query_json([input_node_id], [], 
+                                   [input_node_category], 
+                                   node2_categories, 
+                                   sele_predicates)
+
+    # Step 4: Query the APIs in parallel
+    result = translator_query.parallel_api_query(query_json=query_json,
+                                                 select_APIs= sele_APIs,
+                                                 APInames=APInames,
+                                                 API_predicates=API_predicates,
+                                                 max_workers=len(sele_APIs))
+    result_parsed = parse_KG(result)
+        # Step 7: Ranking the results. This ranking method is based on the number of unique
+        # primary infores. It can only be used to rank the results with one defined node.
+    result_ranked_by_primary_infores1 = rank_by_primary_infores(result_parsed, input_node_id)   # input_node1_id is the curie id of the
+    return input_node_id, result, result_parsed, result_ranked_by_primary_infores1
+
+def Path_finder(input_node1, input_node2, intermediate_categories, APInames, metaKG, API_predicates, input_node1_category = [], input_node2_category = []):
+    """
+    This function is used to find paths between two input nodes with intermediate categories.
     
+    --------------
+    Parameters:
+    input_node1 (str): The first input node, can be a gene name, protein name, or any other identifier.
+    input_node2 (str): The second input node, can be a gene name, protein name, or any other identifier.
+    intermediate_categories (list): A list of intermediate categories to be used in the path finding process.
+    
+    --------------
+    Returns:
+    paths (DataFrame): A DataFrame containing the paths found between the two input nodes.
+    input_node1_id (str): The curie id of the first input node.
+    input_node2_id (str): The curie id of the second input node.
+    result1 (dict): The result of the query for the first input node.
+    result2 (dict): The result of the query for the second input node.
+    result_parsed1 (DataFrame): The parsed results for the first input node.
+    result_parsed2 (DataFrame): The parsed results for the second input node.
+    result_ranked_by_primary_infores1 (DataFrame): The ranked results for the first input node based on primary infores.
+    result_ranked_by_primary_infores2 (DataFrame): The ranked results for the second
+    --------------
+    Example:
+    >>> paths, input_node1_id, input_node2_id, result1, result2, result_parsed1, result_parsed2, result_ranked_by_primary_infores1, result_ranked_by_primary_infores2 = Path_finder('WNT7B', 'NPM1', ['biolink:Gene', 'biolink:Protein'])
+    --------------
+
+    """
+    from src.translator_component_toolkit import name_resolver
+    from src.translator_component_toolkit import translator_query
+    input_node1_info = name_resolver.lookup(input_node1)
+    input_node1_id = input_node1_info.curie
+    print(input_node1_id)
+    input_node1_list = [input_node1_id]
+    if len(input_node1_category) == 0:
+        input_node1_category = input_node1_info.types 
+    else:
+        input_node1_category = list(set(input_node1_category).intersection(set(input_node1_info.types)))
+        if len(input_node1_category) == 0:
+            input_node1_category = input_node1_info.types
+
+    input_node2_info = name_resolver.lookup(input_node2)
+    input_node2_id = input_node2_info.curie
+    print(input_node2_id)
+    input_node2_list = [input_node2_id]
+
+    if len(input_node2_category) == 0:
+        input_node2_category = input_node2_info.types 
+    else:
+        input_node2_category = list(set(input_node2_category).intersection(set(input_node2_info.types)))
+        if len(input_node2_category) == 0:
+            input_node2_category = input_node2_info.types
+
+
+    # Step 5: Select predicates and APIs based on the intermediate categories
+    sele_predicates1, sele_APIs1, API_URLs1 = sele_predicates_API(input_node1_category,
+                                                                intermediate_categories,
+                                                                metaKG, APInames)
+    sele_predicates2, sele_APIs2, API_URLs2 = sele_predicates_API(input_node2_category,
+                                                                intermediate_categories,
+                                                                metaKG, APInames)    
+
+    query_json1 = format_query_json(input_node1_list,  # a list of identifiers for input node1
+                                    [],  # id list for the intermediate node, it can be empty list if only want to query node1
+                                    input_node1_category,  # a list of categories of input node1
+                                    intermediate_categories,  # a list of categories of the intermediate node
+                                    sele_predicates1) # a list of predicates
+
+    query_json2 = format_query_json(input_node2_list,  # a list of identifiers for input node2
+                                    [],  # id list for the intermediate node, it can be empty list if only want to query node2
+                                    input_node2_category,  # a list of categories of input node2
+                                    intermediate_categories,  # a list of categories of the intermediate node
+                                    sele_predicates2) # a list of predicates
+    
+    result1 = translator_query.parallel_api_query(query_json=query_json1,
+                                                  select_APIs = sele_APIs1,
+                                                  APInames=APInames,
+                                                  API_predicates=API_predicates,
+                                                  max_workers=len(sele_APIs1))
+    result2 = translator_query.parallel_api_query(query_json=query_json2,
+                                                  select_APIs = sele_APIs2,
+                                                  APInames=APInames,
+                                                  API_predicates=API_predicates,
+                                                  max_workers=len(sele_APIs2))
+
+    result_parsed1 = parse_KG(result1)
+        # Step 7: Ranking the results. This ranking method is based on the number of unique
+        # primary infores. It can only be used to rank the results with one defined node.
+    result_ranked_by_primary_infores1 = rank_by_primary_infores(result_parsed1, input_node1_id)   # input_node1_id is the curie id of the
+
+    result_parsed2 = parse_KG(result2)
+    result_ranked_by_primary_infores2 = rank_by_primary_infores(result_parsed2, input_node2_id)   # input_node2_id is the curie id of the
+
+    possible_paths = len(set(result_ranked_by_primary_infores1['output_node']).intersection(set(result_ranked_by_primary_infores2['output_node'])))
+    print("Number of possible paths: ", possible_paths)
+
+    paths = merge_ranking_by_number_of_infores(result_ranked_by_primary_infores1, result_ranked_by_primary_infores2, 
+                                            top_n = 30,
+                                            fontsize=10,
+                                            title_fontsize=12,)
+    
+    return paths,  input_node1_id, input_node2_id, result1, result2, result_parsed1, result_parsed2, result_ranked_by_primary_infores1, result_ranked_by_primary_infores2
+
 # used. Dec 5, 2023 (Example_query_one_hop_with_category.ipynb)
-def parallel_api_query(URLS, query_json, max_workers=1):
-    # Parallel query
-    result = []
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        future_to_url = {executor.submit(query_KP, url, query_json): url for url in URLS}
 
-        for future in as_completed(future_to_url):
-            url = future_to_url[future]
-            try:
-                data = future.result()
-                if 'knowledge_graph' in data:
-                    result.append(data)
-            except Exception as exc:
-                print('%r generated an exception: %s' % (url, exc))
-    
-    included_KP_ID = []
-    for i in range(0,len(result)):
-        if result[i]['knowledge_graph'] is not None:
-            if 'knowledge_graph' in result[i]:
-                if 'edges' in result[i]['knowledge_graph']:
-                    if len(result[i]['knowledge_graph']['edges']) > 0:
-                        included_KP_ID.append(i)
-
-    result_merged = {}
-    for i in included_KP_ID:
-        result_merged = {**result_merged, **result[i]['knowledge_graph']['edges']}
-
-    len(result_merged)
-
-    return(result_merged)
 
 # used. Dec 5, 2023    (Example_query_one_hop_with_category.ipynb)
 def parse_KG(result):
@@ -1120,8 +1456,8 @@ def merge_ranking_by_number_of_infores(result_ranked_by_primary_infores,
     for i in overlapped:
         #print(result_ranked_by_primary_infores[result_ranked_by_primary_infores['output_node'] == i]['unique_predicates'])
         dic_xy[i] = dic_x[i] * dic_y[i]
-        predicts_list1.append('\n'.join(list(set(result_ranked_by_primary_infores[result_ranked_by_primary_infores['output_node'] == i]['unique_predicates'].values[0]))))
-        predicts_list2.append('\n'.join(list(result_ranked_by_primary_infores1[result_ranked_by_primary_infores1['output_node'] == i]['unique_predicates'].values[0])))
+        predicts_list1.append('; '.join(list(set(result_ranked_by_primary_infores[result_ranked_by_primary_infores['output_node'] == i]['unique_predicates'].values[0]))))
+        predicts_list2.append('; '.join(list(result_ranked_by_primary_infores1[result_ranked_by_primary_infores1['output_node'] == i]['unique_predicates'].values[0])))
 
     result_xy = pd.DataFrame.from_dict(dic_xy, orient='index', columns=['score'])
     result_xy['output_node'] = result_xy.index
@@ -1162,7 +1498,7 @@ def plot_path_bar(x,
                     fontsize = 8,
                     title_fontsize = 10, 
                     output_png="NE_heatmap.png"):
-    matplotlib.use('Agg')
+    #matplotlib.use('Agg')
     
     title = "Bridging nodes"
     fig = plt.figure(figsize=(5,5), dpi = 300)
@@ -1292,56 +1628,6 @@ def query_KP_all(subject_ids, object_ids, subject_categories, object_categories,
                     result_concept[API_sele] = predicates_used
                     result_dict[API_sele] = kg_output
     return(result_dict, result_concept)
-
-# to be removed
-def format_query_json_old(subject_ids, object_ids, subject_categories, object_categories, predicates):
-    '''
-    Example input:
-    subject_ids = ["NCBIGene:3845"]
-    object_ids = []
-    subject_categories = ["biolink:Gene"]
-    object_categories = ["biolink:Gene"]
-    predicates = ["biolink:positively_correlated_with", "biolink:physically_interacts_with"]
-
-    '''
-    query_json_temp = {
-        "message": {
-            "query_graph": {
-                "nodes": {
-                    "n0": {
-                        "ids":[],
-                        "categories":[]
-                    },
-                    "n1": {
-                        "categories":[]
-                }
-                },
-                "edges": {
-                    "e1": {
-                        "subject": "n0",
-                        "object": "n1",
-                        "predicates": predicates
-                    }
-                }
-            }
-        }
-    }
-
-    if len(subject_ids) > 0:
-        query_json_temp["message"]["query_graph"]["nodes"]["n0"]["ids"] = subject_ids
-    if len(object_ids) > 0:
-        query_json_temp["message"]["query_graph"]["nodes"]["n1"]["ids"] = object_ids
-
-    if len(subject_categories) > 0:
-        query_json_temp["message"]["query_graph"]["nodes"]["n0"]["categories"] = subject_categories
-
-    if len(object_categories) > 0:
-        query_json_temp["message"]["query_graph"]["nodes"]["n1"]["categories"] = object_categories
-
-    if len(predicates) > 0:
-        query_json_temp["message"]["query_graph"]["edges"]["e1"]["predicates"] = predicates
-
-    return(query_json_temp)
 
 # to be removed
 def parse_result_old( API_keys_sele, API_keys_Not_include, predicates_forAnalysis,result_dic):
@@ -1811,13 +2097,24 @@ def TRAPI_json_validation(query_json_cur_clean, ALL_predicates, ALL_categories):
     return()
 
 def format_id(query_json_cur_clean):
-    input_nodes = query_json_cur_clean['message']['query_graph']['nodes']['n0']['ids']
-    input_node1_id = []
-    for i in input_nodes:
-        input_node1_id.append(get_curie(i))
-    print(input_node1_id)
+    if 'ids' in query_json_cur_clean['message']['query_graph']['nodes']['n0'].keys():
+        input_nodes = query_json_cur_clean['message']['query_graph']['nodes']['n0']['ids']
+        input_node1_id = []
+        if len(input_nodes) > 0:
+            for i in input_nodes:
+                input_node1_id.append(get_curie(i))
+            print(input_node1_id)
 
-    query_json_cur_clean['message']['query_graph']['nodes']['n0']['ids'] = input_node1_id
+        query_json_cur_clean['message']['query_graph']['nodes']['n0']['ids'] = input_node1_id
+
+    if 'ids' in query_json_cur_clean['message']['query_graph']['nodes']['n1'].keys():
+        input_nodes2 = query_json_cur_clean['message']['query_graph']['nodes']['n1']['ids']
+        input_node2_id = []
+        if len(input_nodes2) > 0:
+            for i in input_nodes2:
+                input_node2_id.append(get_curie(i))
+            print(input_node2_id)
+        query_json_cur_clean['message']['query_graph']['nodes']['n1']['ids'] = input_node2_id
     return(query_json_cur_clean)
 
 def query_chatGPT(customized_input, model="gpt-3.5-turbo"):
@@ -1919,9 +2216,31 @@ def visulize_path(input_node1_id, intermediate_node, input_node3_id, result, res
 
     forplot = forplot.drop_duplicates()
 
-   
+    # add two columns for forplot named check1 = Subject_name + '::' + Predicates + '::' + Object_name, and check2 = Object_name + '::' + Predicates + '::' + Subject_name
+    # if check1 is equal to check2, then drop one of them
+    forplot['check1'] = forplot['Subject_name'] + '::' + forplot['Predicates'] + '::' + forplot['Object_name']
+    forplot['check2'] = forplot['Object_name'] + '::' + forplot['Predicates'] + '::' + forplot['Subject_name']
+    
+    # check if check1 is equal to check2, if so, drop one of them
+    to_be_dropped = []
+    check1_list = list(forplot['check1'].values)
+    check2_list = list(forplot['check2'].values)
+
+    for i in range(0,len(check1_list)-1):
+        for j in range(i, len(check1_list)):
+            if check1_list[i] == check2_list[j] and check2_list[i] == check1_list[j]:
+                to_be_dropped.append(i)
+                break
+                #break
+    to_be_dropped
+    forplot = forplot.drop(to_be_dropped, axis=0)
+    # remove the check1 and check2 columns
+    forplot = forplot.drop(['check1', 'check2'], axis=1)
+
+    forplot = forplot.reset_index(drop=True)
 
     graph = nx.from_pandas_edgelist(forplot, source='Subject_name', target='Object_name', edge_attr=[ 'Predicates'], create_using=nx.MultiGraph)
+    
     graph_style = [{'selector': 'node[id]',
                              'style': {
                                   'font-family': 'Arial',
@@ -1966,17 +2285,20 @@ def get_similar_category(query_json_cur_clean, KG_category):
     similar_category = []
     for word in words:
         if word.startswith('biolink:') :
-            similar_category.append(word)
+            potential_similar_category = word.strip(',').strip(')')
+            if potential_similar_category in KG_category:
+                similar_category.append(potential_similar_category)
 
     for category in query_json_cur_clean['message']['query_graph']['nodes']['n0']['categories']:
-        similar_category.append(category)
+        if category in KG_category:
+            similar_category.append(category)
 
     for category in query_json_cur_clean['message']['query_graph']['nodes']['n1']['categories']:
-        similar_category.append(category)
+        if category in KG_category:
+            similar_category.append(category)
 
-    similar_category = list(set(similar_category))
+    similar_category = similar_category + KG_category
 
-    similar_category
     return similar_category
 
 def get_similar_predicate(query_json_cur_clean, All_predicates):
