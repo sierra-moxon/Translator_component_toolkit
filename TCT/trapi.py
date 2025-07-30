@@ -10,8 +10,7 @@ import urllib.parse
 
 import requests
 
-# TODO: implement...
-
+# TODO: incorporate object ids into the method.
 def build_query(subject_ids:list[str],
         object_categories:list[str], predicates:list[str],
         return_json:bool=True,
@@ -48,7 +47,11 @@ def build_query(subject_ids:list[str],
 
     Examples
     --------
+    In this example, we want all genes that physically interact with gene 3845.
     >>> build_query(['NCBIGene:3845'], ['biolink:Gene'], ['biolink:physically_interacts_with'])
+    "{'message': {'query_graph': {
+        'edges': {'e00': {'subject': 'n00', 'object': 'n01', 'predicates':['biolink:physically_interacts_with]}},
+        'nodes': {'n00': {'ids': ['NCBIGene:3845']}, 'n01': {'categories': ['biolink':Gene']}}}}}"
     """
     query_dict = {
         'message': {
@@ -105,11 +108,13 @@ def query(url:str, query:str):
 
     Returns
     -------
-    TODO
+    A dict representing a result.
 
     Examples
     --------
-    >>> dsf
+    >>> query = build_query(['NCBIGene:3845'], ['biolink:Gene'], ['biolink:physically_interacts_with'])
+    >>> response = query(url, query)
+    >>> print(response)
     """
     # example: 1. get APIs, 2. get APIs that have the target object and subject types, and the target predicates. 3. build the query and run the query.
     response = requests.post(url, json=query)
