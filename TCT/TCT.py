@@ -10,7 +10,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import ipycytoscape
 import yaml
-from TCT import name_resolver
+from . import name_resolver
 
 # plt.switch_backend('module://ipykernel.pylab.backend_inline')
 
