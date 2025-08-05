@@ -187,7 +187,7 @@ def add_plover_API(APInames:dict[str, str], metaKG:pd.DataFrame):
         APInames, metaKG = add_new_API_for_query(APInames, metaKG, "Microbiome KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/mbkp/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
 
 
-    url = 'https://kg2cploverdb.ci.transltr.io/kg2c/meta_knowledge_graph'
+    url = 'https://kg2cplover.rtx.ai:9990/kg2c/meta_knowledge_graph'
     response = requests.get(url)
     data = response.json()
     for i in range(len(data["edges"])):

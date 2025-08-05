@@ -18,9 +18,6 @@ Welcome to Translator Component Toolkit's documentation!
    translator_metakg
    translator_query
    translator_node
-   trapi
-   pathfinder
-   neighborhood
    TCT
 
 Indices and tables

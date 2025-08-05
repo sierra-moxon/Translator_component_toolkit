@@ -6,9 +6,6 @@ import matplotlib.pyplot as plt
 import ipycytoscape
 import networkx as nx
 import numpy as np
-import matplotlib
-import matplotlib.pyplot as plt
-import ipycytoscape
 import yaml
 from . import name_resolver
 
@@ -67,8 +64,6 @@ def get_SmartAPI_Translator_KP_info():
     """
     
     import requests
-    import json
-    import yaml
     import pandas as pd
 
     # several APIs should be excluded:
@@ -594,7 +589,6 @@ def visulization_one_hop_ranking_input_as_list(result_ranked_by_primary_infores,
     primary_infore_list = []
     aggregator_infore_list = []
 
-    from io import BytesIO
     for i in range(0, result_ranked_by_primary_infores.shape[0]):
         oupput_node = result_ranked_by_primary_infores['output_node'][i]
         type_of_node = result_ranked_by_primary_infores['type_of_nodes'][i]
@@ -708,7 +702,6 @@ def visulization_one_hop_ranking(result_ranked_by_primary_infores,result_parsed 
     primary_infore_list = []
     aggregator_infore_list = []
 
-    from io import BytesIO
     for i in range(0, result_ranked_by_primary_infores.shape[0]):
         oupput_node = result_ranked_by_primary_infores['output_node'][i]
         type_of_node = result_ranked_by_primary_infores['type_of_nodes'][i]
@@ -1008,10 +1001,7 @@ def Neiborhood_finder(input_node, node2_categories, APInames, metaKG, API_predic
     --------------
     
     """
-    from TCT import name_resolver
-    from TCT import translator_metakg
-    from TCT import translator_kpinfo
-    from TCT import translator_query
+    from . import translator_query
 
     # Step 1: Resolve the input node to get its curie id and categories
     input_node_info = name_resolver.lookup(input_node)
@@ -1075,10 +1065,8 @@ def Path_finder(input_node1, input_node2, intermediate_categories, APInames, met
     --------------
 
     """
-    from TCT import name_resolver
-    from TCT import translator_metakg
-    from TCT import translator_kpinfo
-    from TCT import translator_query
+    from . import name_resolver
+    from . import translator_query
     input_node1_info = name_resolver.lookup(input_node1)
     input_node1_id = input_node1_info.curie
     print(input_node1_id)
