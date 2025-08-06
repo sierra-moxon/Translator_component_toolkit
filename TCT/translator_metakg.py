@@ -1,8 +1,7 @@
 import requests
 import json
 import pandas as pd
-from TCT import translator_metakg
-from TCT import translator_kpinfo
+
 
 def find_link(name):
     #pre = "https://dev.smart-api.info/api/metakg/consolidated?size=2000&q=%28api.x-translator.component%3AKP+AND+api.name%3A" # This works for the previous version
@@ -31,6 +30,7 @@ def find_link(name):
         url = url+words[length-1]+"%29"
     return(url)
 
+
 def get_KP_metadata(APInames:dict[str, str]) -> pd.DataFrame:
     '''
     This function is used to get the metadata of the KPs in the APInames dictionary.
@@ -47,14 +47,13 @@ def get_KP_metadata(APInames:dict[str, str]) -> pd.DataFrame:
 
     Examples
     --------
-    >>> metaKG = TCT.get_KP_metadata(APInames) 
+    >>> metaKG = get_KP_metadata(APInames) 
     >>> All_predicates = list(set(metaKG['Predicate']))
     All_categories = list((set(list(set(metaKG['Subject']))+list(set(metaKG['Object'])))))
     '''
 
     result_df = pd.DataFrame()
     API_list = []
-    URL_list = []
     Predicate_list = []
     subject_list = []
     object_list = []
@@ -150,8 +149,6 @@ def add_plover_API(APInames:dict[str, str], metaKG:pd.DataFrame):
     --------
     >>> APInames, metaKG = add_plover_API(APInames, metaKG)
     '''
-    
-
     import requests
     url = 'https://multiomics.rtx.ai:9990/BigGIM_DrugResponse_PerformancePhase/meta_knowledge_graph'
     response = requests.get(url)
@@ -190,7 +187,7 @@ def add_plover_API(APInames:dict[str, str], metaKG:pd.DataFrame):
         APInames, metaKG = add_new_API_for_query(APInames, metaKG, "Microbiome KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/mbkp/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
 
 
-    url = 'https://kg2cploverdb.ci.transltr.io/kg2c/meta_knowledge_graph'
+    url = 'https://kg2cplover.rtx.ai:9990/kg2c/meta_knowledge_graph'
     response = requests.get(url)
     data = response.json()
     for i in range(len(data["edges"])):
@@ -198,3 +195,19 @@ def add_plover_API(APInames:dict[str, str], metaKG:pd.DataFrame):
 
     
     return APInames, metaKG
+
+def load_translator_resources():
+    """
+    Load the necessary resources for the Translator.
+
+    Returns
+    -------
+    APInames
+    metaKG
+    Translator_KP_info
+    """
+    from .translator_kpinfo import get_translator_kp_info
+    Translator_KP_info, APInames = get_translator_kp_info()
+    metaKG = get_KP_metadata(APInames)
+    APInames, metaKG = add_plover_API(APInames, metaKG)
+    return  APInames, metaKG, Translator_KP_info
