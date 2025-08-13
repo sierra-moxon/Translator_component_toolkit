@@ -6,14 +6,14 @@ import matplotlib.pyplot as plt
 import ipycytoscape
 import networkx as nx
 import numpy as np
-import matplotlib
-import matplotlib.pyplot as plt
-import ipycytoscape
 import yaml
+from . import name_resolver
 
 # plt.switch_backend('module://ipykernel.pylab.backend_inline')
 
 from IPython.display import display
+
+
 
 
 def TCT_help(func):
@@ -64,8 +64,6 @@ def get_SmartAPI_Translator_KP_info():
     """
     
     import requests
-    import json
-    import yaml
     import pandas as pd
 
     # several APIs should be excluded:
@@ -591,7 +589,6 @@ def visulization_one_hop_ranking_input_as_list(result_ranked_by_primary_infores,
     primary_infore_list = []
     aggregator_infore_list = []
 
-    from io import BytesIO
     for i in range(0, result_ranked_by_primary_infores.shape[0]):
         oupput_node = result_ranked_by_primary_infores['output_node'][i]
         type_of_node = result_ranked_by_primary_infores['type_of_nodes'][i]
@@ -705,7 +702,6 @@ def visulization_one_hop_ranking(result_ranked_by_primary_infores,result_parsed 
     primary_infore_list = []
     aggregator_infore_list = []
 
-    from io import BytesIO
     for i in range(0, result_ranked_by_primary_infores.shape[0]):
         oupput_node = result_ranked_by_primary_infores['output_node'][i]
         type_of_node = result_ranked_by_primary_infores['type_of_nodes'][i]
@@ -1005,10 +1001,7 @@ def Neiborhood_finder(input_node, node2_categories, APInames, metaKG, API_predic
     --------------
     
     """
-    from TCT import name_resolver
-    from TCT import translator_metakg
-    from TCT import translator_kpinfo
-    from TCT import translator_query
+    from . import translator_query
 
     # Step 1: Resolve the input node to get its curie id and categories
     input_node_info = name_resolver.lookup(input_node)
@@ -1072,10 +1065,8 @@ def Path_finder(input_node1, input_node2, intermediate_categories, APInames, met
     --------------
 
     """
-    from TCT import name_resolver
-    from TCT import translator_metakg
-    from TCT import translator_kpinfo
-    from TCT import translator_query
+    from . import name_resolver
+    from . import translator_query
     input_node1_info = name_resolver.lookup(input_node1)
     input_node1_id = input_node1_info.curie
     print(input_node1_id)
@@ -2163,6 +2154,18 @@ def find_similar_category(query_json_cur_clean, ALL_categories):
     current_predicates2 = query_json_cur_clean['message']['query_graph']['nodes']['n1']['categories']
     output = ask_chatGPT4("The categories in the KG are: " + ','.join(ALL_categories) + ". The category in the current query are: " + ','.join(current_predicates1 + current_predicates2) + ". What categories are similar to the categories in the current query?")
     return(output)
+
+def load_translator_resources():
+    """
+    Load the necessary resources for the Translator.
+    """
+    from . import translator_kpinfo
+    from . import translator_metakg
+
+    Translator_KP_info,APInames= translator_kpinfo.get_translator_kp_info()
+    metaKG = translator_metakg.get_KP_metadata(APInames) 
+    APInames,metaKG = translator_metakg.add_plover_API(APInames, metaKG)
+    return  APInames, metaKG, Translator_KP_info
 
 
 def visulize_path(input_node1_id, intermediate_node, input_node3_id, result, result2):
