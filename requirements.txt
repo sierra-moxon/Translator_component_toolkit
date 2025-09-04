@@ -7,3 +7,5 @@ ipycytoscape
 networkx
 openai
 ipykernel
+PyYAML
+ipywidgets
