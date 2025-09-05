@@ -44,6 +44,8 @@ Repository = "https://github.com/NCATSTranslator/Translator_component_toolkit"
 dev-dependencies = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
+    "ruff>=0.1.0",
+    "codespell>=2.2.0",
 ]
 
 [tool.pytest.ini_options]
@@ -56,8 +58,13 @@ addopts = [
     "--cov-report=term-missing",
     "--cov-report=html",
     "--cov-report=xml",
+    "--cov-fail-under=0",
+    "--tb=short",
     "-v"
 ]
+
+[tool.ruff]
+exclude = ["notebooks/"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["TCT"]

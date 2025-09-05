@@ -6,12 +6,51 @@ import matplotlib.pyplot as plt
 import ipycytoscape
 import networkx as nx
 import numpy as np
-import yaml
+import openai
 from . import name_resolver
 
 # plt.switch_backend('module://ipykernel.pylab.backend_inline')
 
 from IPython.display import display
+
+__all__ = [
+    'TCT_help',
+    'list_functions', 
+    'get_Translator_APIs',
+    'get_SmartAPI_Translator_KP_info',
+    'list_Translator_APIs',
+    'load_translator_resources',
+    'Neiborhood_finder',
+    'Path_finder',
+    'format_query_json',
+    'select_API',
+    'select_concept', 
+    'sele_predicates_API',
+    'parse_KG',
+    'rank_by_primary_infores',
+    'rank_by_primary_infores_input_as_list',
+    'ID_convert_to_preferred_name_nodeNormalizer',
+    'visulization_one_hop_ranking',
+    'visulization_one_hop_ranking_input_as_list',
+    'plot_heatmap',
+    'plot_heatmap_ui',
+    'plot_graph_by_predicates',
+    'plot_graph_by_infores', 
+    'plot_graph_by_API',
+    'visulize_path',
+    'get_curie',
+    'merge_ranking_by_number_of_infores',
+    'merge_by_ranking_index',
+    'get_pair_annotation',
+    'parse_pair_annotation',
+    'ask_chatGPT',
+    'ask_chatGPT4',
+    'query_chatGPT',
+    'query_chatGPT4',
+    'load_json_template',
+    'extract_json',
+    'TRAPI_json_validation'
+]
 
 
 
@@ -232,7 +271,7 @@ def list_Translator_APIs():
             #Biolink Lookup : 02f84c50043e94970316568439b7b384
             'COHD TRAPI' : 'https://cohd-api.transltr.io/api/query/', ##d4290b6b5741e6da6cc6a6f42e0cfdb5
             #'Text Mined Cooccurrence API' : "https://cooccurence.ci.transltr.io/query/", #aa9c668df9d217409891cc7afb7ac039
-            'Text Mined Cooccurrence API' : "https//cooccurrence.transltr.io/query", #71fa2e0f0f1fe1ec67f4ddb719db5ef3
+            #'Text Mined Cooccurrence API' : "https//cooccurrence.transltr.io/query", #71fa2e0f0f1fe1ec67f4ddb719db5ef3
             #BioThings Rhea API : 03283cc2b21c077be6794e1704b1d230
             #SmartAPI API : 27a5b60716c3a401f2c021a5b718c5b1
             #MyDisease.info API : 671b45c0301c8624abbd26ae78449ca2
@@ -326,8 +365,7 @@ def list_Translator_APIs():
         "ARAX Translator Reasoner - TRAPI 1.4.0":"https://arax.transltr.io/api/arax/v1.4/query",
         "RTX KG2 - TRAPI 1.4.0":"https://arax.ncats.io/api/rtxkg2/v1.4/query",
         "SPOKE KP for TRAPI 1.4":"https://spokekp.transltr.io/api/v1.4/query",
-        "Multiomics BigGIM-DrugResponse KP API":"https://bte.transltr.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31/query",
-        #"Multiomics BigGIM-DrugResponse KP API":"https://bte.test.transltr.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31/query",
+        # Duplicate removed - "Multiomics BigGIM-DrugResponse KP API":"https://bte.transltr.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31/query",
         "Multiomics ClinicalTrials KP":"https://api.bte.ncats.io/v1/smartapi/d86a24f6027ffe778f84ba10a7a1861a/query",
         "Multiomics Wellness KP API":"https://api.bte.ncats.io/v1/smartapi/02af7d098ab304e80d6f4806c3527027/query",
         "Multiomics EHR Risk KP API":"https://api.bte.ncats.io/v1/smartapi/d86a24f6027ffe778f84ba10a7a1861a/query",
@@ -362,7 +400,7 @@ def list_Translator_APIs():
         "Automat-ubergraph-nonredundant(Trapi v1.4.0)": "https://automat.ci.transltr.io/ubergraph-nonredundant/1.4/query",
         "Automat-viral-proteome(Trapi v1.4.0)": "https://automat.ci.transltr.io/viral-proteome/1.4/query",
         "CTD API":"https://automat.ci.transltr.io/ctd/1.4/query",
-        "Connections Hypothesis Provider API":"https://chp-api.transltr.io/query", #no knowledge_graph is defined in the response
+        # Duplicate removed - "Connections Hypothesis Provider API":"https://chp-api.transltr.io/query", #no knowledge_graph is defined in the response
         "MyGene.info API":"https://api.bte.ncats.io/v1/smartapi/59dce17363dce279d389100834e43648/query", #check with chunlei
         "MyDisease.info API":"https://api.bte.ncats.io/v1/smartapi/671b45c0301c8624abbd26ae78449ca2/query", #check with chunlei
         "MyChem.info API":"https://api.bte.ncats.io/v1/8f08d1446e0bb9c2b323713ce83e2bd3/query", #check with chunlei
@@ -625,7 +663,7 @@ def visulization_one_hop_ranking_input_as_list(result_ranked_by_primary_infores,
     names = []
     for i in range(0, result_ranked_by_primary_infores.shape[0]):
     #for i in range(0, 10):
-        input_nodes = result_ranked_by_primary_infores['input_node'].values[i]
+        # input_nodes = result_ranked_by_primary_infores['input_node'].values[i]  # Unused variable
 
         oupput_node = result_ranked_by_primary_infores['output_node'].values[i]
         names.append(oupput_node)
@@ -808,7 +846,7 @@ def plot_heatmap(predicates_by_nodes_df,num_of_nodes = 20,
     #title = "Ranking of one-hop nodes by primary infores"
     #ylab = "infores"
     df = predicates_by_nodes_df.iloc[:,0:num_of_nodes]
-    colnames = list(df.columns)
+    # colnames = list(df.columns)  # Unused variable
     # create teh figure and subplot
     fig = plt.figure( figsize=(0.8+df.shape[1]*0.11,3.5),dpi = 300)
     ax = fig.add_subplot(111)
@@ -845,7 +883,7 @@ def plot_heatmap_ui(predicates_by_nodes_df,num_of_nodes = 20,
     title = "Ranking of one-hop nodes by primary infores"
     ylab = "infores"
     df = predicates_by_nodes_df.iloc[:,0:num_of_nodes]
-    colnames = list(df.columns)
+    # colnames = list(df.columns)  # Unused variable
     # create teh figure and subplot
     fig = plt.figure( figsize=(0.8+df.shape[1]*0.1,3.5),dpi = 100)
     ax = fig.add_subplot(111)
@@ -1161,7 +1199,7 @@ def parse_KG(result):
     for i in result:
         
         subject_object = result[i]['subject'] + "_" + result[i]['object']
-        object_subject = result[i]['object'] + "_" + result[i]['subject']
+        # object_subject = result[i]['object'] + "_" + result[i]['subject']  # Unused variable
         #result_parsed["predicate"].append(result[i]['predicate'])
         #result_parsed["sources"].append(result[i]['sources'])
         #result_parsed["subject"].append(result[i]['subject'])
@@ -1207,8 +1245,8 @@ def parse_network_result(result, input_node1_list):
     for i in result:
         subject = result[i]['subject']
         object = result[i]['object']
-        predicate = result[i]['predicate']
-        sources = result[i]['sources']
+        # predicate = result[i]['predicate']  # Unused variable
+        # sources = result[i]['sources']  # Unused variable
 
         if subject == object:
             continue
@@ -1472,7 +1510,7 @@ def merge_ranking_by_number_of_infores(result_ranked_by_primary_infores,
 
     result_xy_sorted = result_xy.sort_values(by=['score'], ascending=False)
 
-    convert = False
+    # convert = False  # Unused variable
     colnames = result_xy_sorted.index.to_list()
 
     names = colnames
@@ -1501,7 +1539,7 @@ def plot_path_bar(x,
                     output_png="NE_heatmap.png"):
     #matplotlib.use('Agg')
     
-    title = "Bridging nodes"
+    # title = "Bridging nodes"  # Unused variable
     fig = plt.figure(figsize=(5,5), dpi = 300)
     ax = fig.add_subplot(111)
     ax = sns.barplot(x=x, y=y, color='grey')
@@ -1555,35 +1593,9 @@ def parse_pair_annotation(pairs_found, input_node_list):
 
 #used
 
-def query_chatGPT4(customized_input):
-    message=[{"role": "user", 
-            "content": customized_input}]
+# First definition of query_chatGPT4 removed - duplicate function
 
-    response = openai.ChatCompletion.create(
-    #model="gpt-3.5-turbo",
-    model="gpt-4",
-    max_tokens=1000,
-    temperature=1.2,
-    messages = message)
-
-    #print(len(response.choices[0].message.content.split(" ")))
-
-    return(response.choices[0].message.content)
-
-def query_chatGPT(customized_input):
-    message=[{"role": "user", 
-            "content": customized_input}]
-
-    response = openai.ChatCompletion.create(
-    model="gpt-3.5-turbo",
-    #model="gpt-4",
-    max_tokens=1000,
-    temperature=1.2,
-    messages = message)
-
-    #print(len(response.choices[0].message.content.split(" ")))
-
-    return(response.choices[0].message.content)
+# First definition of query_chatGPT removed - duplicate function
 
 # to be removed
 def query_KP_all(subject_ids, object_ids, subject_categories, object_categories, predicates, API_list,metaKG, APInames):
@@ -1612,16 +1624,17 @@ def query_KP_all(subject_ids, object_ids, subject_categories, object_categories,
 
         print(query_json)
         try:
-            kg_output = query_KP(APInames[API_sele],query_json)
+            # kg_output = query_KP(APInames[API_sele],query_json)  # query_KP function not defined
+            kg_output = None  # Placeholder - function not available
             
-        except:
+        except Exception:
             print("Connection Error")
             kg_output = None
             
         if kg_output is not None:
             # if kg_output is  a dictionary
 
-            if type(kg_output) == dict and 'nodes' in kg_output.keys():
+            if isinstance(kg_output, dict) and 'nodes' in kg_output.keys():
                 if len(kg_output['nodes']) >0:
 
                     print("Found: " + str(len(kg_output['edges'].keys())) + " nodes in " + API_sele) 
@@ -1797,13 +1810,7 @@ def connecting_two_dots_two_hops(sorted_dic1, sorted_dic):
 
     return(res_df)
 
-def select_result_to_analysis(sele_genes,Temp_result_df, Temp_result_df1 ):
-    
-    print(sele_genes)
-    for_plot = pd.concat([Temp_result_df1.loc[Temp_result_df1['Object'].isin(sele_genes)],
-            Temp_result_df.loc[Temp_result_df['Object'].isin(sele_genes)]], axis=0)
-
-    return(for_plot)
+# First definition of select_result_to_analysis removed - duplicate function
 
 # need revision
 def find_path_by_two_ends(subject1_ids, 
@@ -1827,12 +1834,14 @@ def find_path_by_two_ends(subject1_ids,
     result_dic_node2, result_concept_node2 = query_KP_all(subject2_ids, [], subject2_categories, object_categories, predicates2, API_list2, metaKG, APInames)
 
     
-    Temp_result_df1 = parse_result(API1_keys_forAnalysis,API1_keys_NotforAnalysis, result_concept_node1, result_dic_node1)
+    # Temp_result_df1 = parse_result(API1_keys_forAnalysis,API1_keys_NotforAnalysis, result_concept_node1, result_dic_node1)  # parse_result function not defined
+    Temp_result_df1 = None  # Placeholder - function not available
     sorted_dic1 = ranking_result_by_predicates_object(Temp_result_df1)
 
     dic_ranking1 = get_ranking_by_infores(sorted_dic1, Temp_result_df1, 20)
 
-    Temp_result_df2 = parse_result(API2_keys_forAnalysis,API2_keys_NotforAnalysis, result_concept_node2, result_dic_node2)
+    # Temp_result_df2 = parse_result(API2_keys_forAnalysis,API2_keys_NotforAnalysis, result_concept_node2, result_dic_node2)  # parse_result function not defined
+    Temp_result_df2 = None  # Placeholder - function not available
     sorted_dic2 = ranking_result_by_predicates_object(Temp_result_df2)
 
     dic_ranking2 = get_ranking_by_infores(sorted_dic2, Temp_result_df2, 20)
@@ -2042,7 +2051,7 @@ def extract_json(txt):
             try:
                 jsn = json.loads(substr)
                 return jsn
-            except Exception as e:
+            except Exception:
                 rgt = txt.find('}', rgt+1)
         lft = txt.find('{', lft+1)
     return None

@@ -6,7 +6,6 @@ API Documentation: https://github.com/NCATSTranslator/ReasonerAPI
 Additional API Documentation: https://github.com/NCATSTranslator/ReasonerAPI/blob/master/docs/reference.md
 """
 import json
-import urllib.parse
 
 import requests
 
