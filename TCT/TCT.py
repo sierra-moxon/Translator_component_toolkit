@@ -847,7 +847,7 @@ def plot_heatmap(predicates_by_nodes_df,num_of_nodes = 20,
     #ylab = "infores"
     df = predicates_by_nodes_df.iloc[:,0:num_of_nodes]
     # colnames = list(df.columns)  # Unused variable
-    # create teh figure and subplot
+    # create the figure and subplot
     fig = plt.figure( figsize=(0.8+df.shape[1]*0.11,3.5),dpi = 300)
     ax = fig.add_subplot(111)
 
@@ -884,7 +884,7 @@ def plot_heatmap_ui(predicates_by_nodes_df,num_of_nodes = 20,
     ylab = "infores"
     df = predicates_by_nodes_df.iloc[:,0:num_of_nodes]
     # colnames = list(df.columns)  # Unused variable
-    # create teh figure and subplot
+    # create the figure and subplot
     fig = plt.figure( figsize=(0.8+df.shape[1]*0.1,3.5),dpi = 100)
     ax = fig.add_subplot(111)
 
