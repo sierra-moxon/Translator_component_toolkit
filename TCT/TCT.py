@@ -6,12 +6,51 @@ import matplotlib.pyplot as plt
 import ipycytoscape
 import networkx as nx
 import numpy as np
-import yaml
+import openai
 from . import name_resolver
 
 # plt.switch_backend('module://ipykernel.pylab.backend_inline')
 
 from IPython.display import display
+
+__all__ = [
+    'TCT_help',
+    'list_functions',
+    'get_Translator_APIs',
+    'get_SmartAPI_Translator_KP_info',
+    'list_Translator_APIs',
+    'load_translator_resources',
+    'Neiborhood_finder',
+    'Path_finder',
+    'format_query_json',
+    'select_API',
+    'select_concept',
+    'sele_predicates_API',
+    'parse_KG',
+    'rank_by_primary_infores',
+    'rank_by_primary_infores_input_as_list',
+    'ID_convert_to_preferred_name_nodeNormalizer',
+    'visulization_one_hop_ranking',
+    'visulization_one_hop_ranking_input_as_list',
+    'plot_heatmap',
+    'plot_heatmap_ui',
+    'plot_graph_by_predicates',
+    'plot_graph_by_infores',
+    'plot_graph_by_API',
+    'visulize_path',
+    'get_curie',
+    'merge_ranking_by_number_of_infores',
+    'merge_by_ranking_index',
+    'get_pair_annotation',
+    'parse_pair_annotation',
+    'ask_chatGPT',
+    'ask_chatGPT4',
+    'query_chatGPT',
+    'query_chatGPT4',
+    'load_json_template',
+    'extract_json',
+    'TRAPI_json_validation'
+]
 
 
 
@@ -27,7 +66,7 @@ def list_functions():
         if inspect.isfunction(obj):
             functions.append(name)
     return functions
-    
+
 # used. Jan 5, 2024
 def get_Translator_APIs():
     '''
@@ -35,7 +74,7 @@ def get_Translator_APIs():
 
     Examples
     --------
-    >>> Translator_KP_info,APInames= TCT.get_SmartAPI_Translator_KP_info() 
+    >>> Translator_KP_info,APInames= TCT.get_SmartAPI_Translator_KP_info()
     '''
     Translator_APIs = []
     #Translator_apps_url = "https://smart-api.info/api/query?q=tags.name:translator&fields=info,_meta,tags&meta=1&size=500"
@@ -55,14 +94,14 @@ def get_SmartAPI_Translator_KP_info():
     Get the SmartAPI Translator KP info from the smart-api.info API.
     Returns a DataFrame with the SmartAPI Translator KP info.
 
-    
+
 
     Examples
     --------
     >>> Translator_KP_info,APInames = get_SmartAPI_Translator_KP_info('AML')
 
     """
-    
+
     import requests
     import pandas as pd
 
@@ -87,17 +126,17 @@ def get_SmartAPI_Translator_KP_info():
     ci_url_list = []
     test_url_list = []
     for api in smartapis:
-        
-        
+
+
         ci_found = False
         test_found = False
         prod_found = False
         for i in range(len(api['servers'])):
-            
+
             server = api['servers'][i]
             if 'x-maturity' not in server:
                 print(f"Skipping server without x-maturity: {server}")
-                
+
             else:
                 if server['x-maturity'] == 'production':
                     # if prod_ur is not ars-prod.transltr.io
@@ -110,9 +149,9 @@ def get_SmartAPI_Translator_KP_info():
                         else:
                             # if prod_url does not end with /, add '/query/' to the end
                             prod_url = server['url'] + '/query/'
-                    
+
                     prod_found = True
-                
+
                 if server['x-maturity'] == 'staging' or server['x-maturity'] == 'development':
                     # if ci_url is not ars.ci.transltr.io
                     if server['url'] == 'https://ars.ci.transltr.io':
@@ -159,7 +198,7 @@ def get_SmartAPI_Translator_KP_info():
                 test_url_list.append(test_url)
             else:
                 test_url = test_url_list.append(None)
-                
+
     # write all the smartapis to a dataframe
 
     smartapi_df = pd.DataFrame({
@@ -173,7 +212,7 @@ def get_SmartAPI_Translator_KP_info():
 
     # remove the excluded APIs from the dataframe
     #excluded_APIs = ['https://smart-api.info/ui/ac9c2ad11c5c442a1a1271223468ced1',#RaMP]
-    
+
     #smartapi_df = smartapi_df[~smartapi_df['id'].isin(excluded_APIs)]
 
     API_names = {}
@@ -182,13 +221,13 @@ def get_SmartAPI_Translator_KP_info():
             #API_names[smartapi_df['title'][i]] = smartapi_df['prod_url'][i] + 'query/'
             API_names[smartapi_df['title'].values[i]] = prod_url_list[i]
         else:
-            API_names[smartapi_df['title'].values[i]] = ci_url_list[i] 
+            API_names[smartapi_df['title'].values[i]] = ci_url_list[i]
     return smartapi_df, API_names
 
 # used Dec 5, 2023 (Example_query_one_hop_with_category.ipynb)
 def list_Translator_APIs():
     APInames = {
-            'Sri-name-resolver':'https://name-lookup.ci.transltr.io/query/', #https://smart-api.info/ui/9995fed757acd034ef099dbb483c4c82 
+            'Sri-name-resolver':'https://name-lookup.ci.transltr.io/query/', #https://smart-api.info/ui/9995fed757acd034ef099dbb483c4c82
             #'Monarch API':'https://api-v3.monarchinitiative.org/query/' #https://smart-api.info/ui/d22b657426375a5295e7da8a303b9893
             #Complex Portal Web Service : #https://smart-api.info/ui/326eb1e437303bee27d3cef29227125d
             'Sri-answer-appraiser(Trapi v1.5.0)':'https://answerappraiser.renci.org/get_appraisal/', #https://smart-api.info/ui/6dcc5454fe4e0095090d8a956781c438
@@ -232,7 +271,7 @@ def list_Translator_APIs():
             #Biolink Lookup : 02f84c50043e94970316568439b7b384
             'COHD TRAPI' : 'https://cohd-api.transltr.io/api/query/', ##d4290b6b5741e6da6cc6a6f42e0cfdb5
             #'Text Mined Cooccurrence API' : "https://cooccurence.ci.transltr.io/query/", #aa9c668df9d217409891cc7afb7ac039
-            'Text Mined Cooccurrence API' : "https//cooccurrence.transltr.io/query", #71fa2e0f0f1fe1ec67f4ddb719db5ef3
+            #'Text Mined Cooccurrence API' : "https//cooccurrence.transltr.io/query", #71fa2e0f0f1fe1ec67f4ddb719db5ef3
             #BioThings Rhea API : 03283cc2b21c077be6794e1704b1d230
             #SmartAPI API : 27a5b60716c3a401f2c021a5b718c5b1
             #MyDisease.info API : 671b45c0301c8624abbd26ae78449ca2
@@ -326,8 +365,7 @@ def list_Translator_APIs():
         "ARAX Translator Reasoner - TRAPI 1.4.0":"https://arax.transltr.io/api/arax/v1.4/query",
         "RTX KG2 - TRAPI 1.4.0":"https://arax.ncats.io/api/rtxkg2/v1.4/query",
         "SPOKE KP for TRAPI 1.4":"https://spokekp.transltr.io/api/v1.4/query",
-        "Multiomics BigGIM-DrugResponse KP API":"https://bte.transltr.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31/query",
-        #"Multiomics BigGIM-DrugResponse KP API":"https://bte.test.transltr.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31/query",
+        # Duplicate removed - "Multiomics BigGIM-DrugResponse KP API":"https://bte.transltr.io/v1/smartapi/adf20dd6ff23dfe18e8e012bde686e31/query",
         "Multiomics ClinicalTrials KP":"https://api.bte.ncats.io/v1/smartapi/d86a24f6027ffe778f84ba10a7a1861a/query",
         "Multiomics Wellness KP API":"https://api.bte.ncats.io/v1/smartapi/02af7d098ab304e80d6f4806c3527027/query",
         "Multiomics EHR Risk KP API":"https://api.bte.ncats.io/v1/smartapi/d86a24f6027ffe778f84ba10a7a1861a/query",
@@ -362,7 +400,7 @@ def list_Translator_APIs():
         "Automat-ubergraph-nonredundant(Trapi v1.4.0)": "https://automat.ci.transltr.io/ubergraph-nonredundant/1.4/query",
         "Automat-viral-proteome(Trapi v1.4.0)": "https://automat.ci.transltr.io/viral-proteome/1.4/query",
         "CTD API":"https://automat.ci.transltr.io/ctd/1.4/query",
-        "Connections Hypothesis Provider API":"https://chp-api.transltr.io/query", #no knowledge_graph is defined in the response
+        # Duplicate removed - "Connections Hypothesis Provider API":"https://chp-api.transltr.io/query", #no knowledge_graph is defined in the response
         "MyGene.info API":"https://api.bte.ncats.io/v1/smartapi/59dce17363dce279d389100834e43648/query", #check with chunlei
         "MyDisease.info API":"https://api.bte.ncats.io/v1/smartapi/671b45c0301c8624abbd26ae78449ca2/query", #check with chunlei
         "MyChem.info API":"https://api.bte.ncats.io/v1/8f08d1446e0bb9c2b323713ce83e2bd3/query", #check with chunlei
@@ -403,7 +441,7 @@ def list_Translator_APIs():
 def select_API(sub_list,obj_list, metaKG):
     '''
     selects the APIs that can connect the given subject and object categories in the meta knowledge graph.
-    
+
     sub_list = ["biolink:Gene", "biolink:Protein"]
     obj_list = ["biolink:Gene", "biolink:Disease"]
 
@@ -411,10 +449,10 @@ def select_API(sub_list,obj_list, metaKG):
     Example:
     >>> sub_list = ["biolink:Gene", "biolink:Protein"]
     >>> obj_list = ["biolink:Gene", "biolink:Disease"]
-    >>> 
+    >>>
     >>> Translator_KP_info,APInames= translator_kpinfo.get_translator_kp_info()
     >>> print(len(Translator_KP_info))
-    >>> metaKG = translator_metakg.get_KP_metadata(APInames) 
+    >>> metaKG = translator_metakg.get_KP_metadata(APInames)
     >>> print(metaKG.shape)
     >>> APInames,metaKG = translator_metakg.add_plover_API(APInames, metaKG)
     >>> selected_apis = select_API(sub_list, obj_list, metaKG)
@@ -452,7 +490,7 @@ def sele_predicates_API(input_node1_category,input_node2_category,metaKG, APInam
     -----------
     Example:
     >>> sele_predicates, sele_APIs, API_URLs = sele_predicates_API(input_node1_category,input_node2_category,metaKG, APInames)
-    
+
     '''
     sele_predicates = list(set(select_concept(sub_list=input_node1_category,
                                                  obj_list=input_node2_category,
@@ -460,7 +498,7 @@ def sele_predicates_API(input_node1_category,input_node2_category,metaKG, APInam
     sele_APIs = select_API(sub_list=input_node1_category,
                            obj_list=input_node2_category,
                            metaKG=metaKG)
-    
+
     API_URLs = get_Translator_API_URL(sele_APIs, APInames)
     if len(sele_predicates) == 0:
         print("No predicates found for the given categories.")
@@ -485,7 +523,7 @@ def get_Translator_API_URL(API_sele, APInames):
 # select APIs based on the predicates. Dec 10, 2023
 def filter_APIs(sele_predicates, metaKG):
     if sele_predicates == []:
-        sele_API_URL = list(metaKG['KG_category'].unique())    
+        sele_API_URL = list(metaKG['KG_category'].unique())
     else:
         sele_API_URL = list(metaKG.loc[metaKG['KG_category'].isin(sele_predicates)]['URL'].unique())
     return sele_API_URL
@@ -514,7 +552,7 @@ def select_predicates_inKP(sub_list,obj_list,KPname,metaKG):
         final_set.append(concept)
     return(final_set)
 
-    
+
 #def Generate_Gene_id_map():
 #    id_file = open("../metaData/Homo_sapiens.gene_info", "r")
 #    Gene_id_map = {}
@@ -568,16 +606,16 @@ def ID_convert_to_preferred_name_nodeNormalizer(id_list):
                     dic_id_map[curie] = curie
             else:
                 unrecoglized_ids.append(curie)
-                
+
                 dic_id_map[curie] = curie
     if len(unrecoglized_ids) > 0:
         print("NodeNorm does not know about these identifiers: " + ",".join(unrecoglized_ids))
-    
+
     return dic_id_map
 
 
-def visulization_one_hop_ranking_input_as_list(result_ranked_by_primary_infores,result_parsed , 
-                                 num_of_nodes = 20, 
+def visulization_one_hop_ranking_input_as_list(result_ranked_by_primary_infores,result_parsed ,
+                                 num_of_nodes = 20,
                                  input_query = "NCBIGene:3845",
                                  fontsize = 6,
                                  title_fontsize = 12,
@@ -598,17 +636,17 @@ def visulization_one_hop_ranking_input_as_list(result_ranked_by_primary_infores,
         else:
             subject = oupput_node
             object = input_query
-            
+
         predicates_list = predicates_list + result_parsed[subject + "_" + object]['predicate']
         primary_infore_list = primary_infore_list + result_parsed[subject + "_" + object]['primary_knowledge_source']
-        
+
         if 'aggregator_knowledge_source' in result_parsed[subject + "_" + object]:
             aggregator_infore_list = aggregator_infore_list + result_parsed[subject + "_" + object]['aggregator_knowledge_source']
             aggregator_infore_list = list(set(aggregator_infore_list))
 
         predicates_list = list(set(predicates_list))
         primary_infore_list = list(set(primary_infore_list))
-        
+
 
     predicates_by_nodes = {}
     for predict in predicates_list:
@@ -621,11 +659,11 @@ def visulization_one_hop_ranking_input_as_list(result_ranked_by_primary_infores,
     aggregator_infore_by_nodes = {}
     for predict in aggregator_infore_list:
         aggregator_infore_by_nodes[predict] = []
-        
+
     names = []
     for i in range(0, result_ranked_by_primary_infores.shape[0]):
     #for i in range(0, 10):
-        input_nodes = result_ranked_by_primary_infores['input_node'].values[i]
+        # input_nodes = result_ranked_by_primary_infores['input_node'].values[i]  # Unused variable
 
         oupput_node = result_ranked_by_primary_infores['output_node'].values[i]
         names.append(oupput_node)
@@ -669,11 +707,11 @@ def visulization_one_hop_ranking_input_as_list(result_ranked_by_primary_infores,
         if item in dic_id_map:
             new_colnames.append(dic_id_map[item])
         else:
-            new_colnames.append(item)    
+            new_colnames.append(item)
 
     #else:
     #    new_colnames = colnames
-            
+
     primary_infore_by_nodes_df = pd.DataFrame(primary_infore_by_nodes)
     primary_infore_by_nodes_df.index = new_colnames
     primary_infore_by_nodes_df = primary_infore_by_nodes_df.T
@@ -689,8 +727,8 @@ def visulization_one_hop_ranking_input_as_list(result_ranked_by_primary_infores,
     return(predicates_by_nodes_df)
 
 # Used. Jan 5, 2024
-def visulization_one_hop_ranking(result_ranked_by_primary_infores,result_parsed , 
-                                 num_of_nodes = 20, 
+def visulization_one_hop_ranking(result_ranked_by_primary_infores,result_parsed ,
+                                 num_of_nodes = 20,
                                  input_query = "NCBIGene:3845",
                                  fontsize = 6,
                                  title_fontsize = 12,
@@ -711,17 +749,17 @@ def visulization_one_hop_ranking(result_ranked_by_primary_infores,result_parsed 
         else:
             subject = oupput_node
             object = input_query
-            
+
         predicates_list = predicates_list + result_parsed[subject + "_" + object]['predicate']
         primary_infore_list = primary_infore_list + result_parsed[subject + "_" + object]['primary_knowledge_source']
-        
+
         if 'aggregator_knowledge_source' in result_parsed[subject + "_" + object]:
             aggregator_infore_list = aggregator_infore_list + result_parsed[subject + "_" + object]['aggregator_knowledge_source']
             aggregator_infore_list = list(set(aggregator_infore_list))
 
         predicates_list = list(set(predicates_list))
         primary_infore_list = list(set(primary_infore_list))
-        
+
 
     predicates_by_nodes = {}
     for predict in predicates_list:
@@ -734,7 +772,7 @@ def visulization_one_hop_ranking(result_ranked_by_primary_infores,result_parsed 
     aggregator_infore_by_nodes = {}
     for predict in aggregator_infore_list:
         aggregator_infore_by_nodes[predict] = []
-        
+
     names = []
     for i in range(0, result_ranked_by_primary_infores.shape[0]):
     #for i in range(0, 10):
@@ -780,11 +818,11 @@ def visulization_one_hop_ranking(result_ranked_by_primary_infores,result_parsed 
         if item in dic_id_map:
             new_colnames.append(dic_id_map[item])
         else:
-            new_colnames.append(item)    
+            new_colnames.append(item)
 
     #else:
     #    new_colnames = colnames
-            
+
     primary_infore_by_nodes_df = pd.DataFrame(primary_infore_by_nodes)
     primary_infore_by_nodes_df.index = new_colnames
     primary_infore_by_nodes_df = primary_infore_by_nodes_df.T
@@ -799,17 +837,17 @@ def visulization_one_hop_ranking(result_ranked_by_primary_infores,result_parsed 
 
     return(predicates_by_nodes_df)
 
-def plot_heatmap(predicates_by_nodes_df,num_of_nodes = 20, 
+def plot_heatmap(predicates_by_nodes_df,num_of_nodes = 20,
                                  fontsize = 6,
-                                 title_fontsize = 10, 
+                                 title_fontsize = 10,
                                  output_png="NE_heatmap.png"):
     #matplotlib.use('Agg')
-    
+
     #title = "Ranking of one-hop nodes by primary infores"
     #ylab = "infores"
     df = predicates_by_nodes_df.iloc[:,0:num_of_nodes]
-    colnames = list(df.columns)
-    # create teh figure and subplot
+    # colnames = list(df.columns)  # Unused variable
+    # create the figure and subplot
     fig = plt.figure( figsize=(0.8+df.shape[1]*0.11,3.5),dpi = 300)
     ax = fig.add_subplot(111)
 
@@ -836,17 +874,17 @@ def plot_heatmap(predicates_by_nodes_df,num_of_nodes = 20,
 
 
 
-def plot_heatmap_ui(predicates_by_nodes_df,num_of_nodes = 20, 
+def plot_heatmap_ui(predicates_by_nodes_df,num_of_nodes = 20,
                                  fontsize = 6,
-                                 title_fontsize = 10, 
+                                 title_fontsize = 10,
                                  output_png="NE_heatmap.png"):
-   
-    
+
+
     title = "Ranking of one-hop nodes by primary infores"
     ylab = "infores"
     df = predicates_by_nodes_df.iloc[:,0:num_of_nodes]
-    colnames = list(df.columns)
-    # create teh figure and subplot
+    # colnames = list(df.columns)  # Unused variable
+    # create the figure and subplot
     fig = plt.figure( figsize=(0.8+df.shape[1]*0.1,3.5),dpi = 100)
     ax = fig.add_subplot(111)
 
@@ -928,7 +966,7 @@ def format_query_json(subject_ids, object_ids, subject_categories, object_catego
     query_json_temp = {
         "message": {
             "query_graph": {
-                
+
                 "edges": {
                     "e00": {
                     #"e1": {
@@ -938,7 +976,7 @@ def format_query_json(subject_ids, object_ids, subject_categories, object_catego
                         }
                     },
                 "nodes": {
-                    "n00": {    
+                    "n00": {
                         "ids":subject_ids, # required
                         #"categories":[] # optional, if not provided, it will be empty
                         },
@@ -974,7 +1012,7 @@ def format_query_json(subject_ids, object_ids, subject_categories, object_catego
 def Neiborhood_finder(input_node, node2_categories, APInames, metaKG, API_predicates, input_node_category = []):
     """
     This function is used to find the neighborhood of a given input node with intermediate categories.
-    
+
     --------------
     Parameters:
     input_node (str): The input node, can be a gene name, protein name, or any other identifier.
@@ -983,23 +1021,23 @@ def Neiborhood_finder(input_node, node2_categories, APInames, metaKG, API_predic
     metaKG (DataFrame): The metadata knowledge graph containing information about the APIs and their predicates.
     API_predicates (dict): A dictionary containing the predicates for each API.
     input_node_category (list): Optional. A list of categories for the input node. If empty, it will be derived from the input node's types.
-    
+
     --------------
     Returns:
     input_node_id (str): The curie id of the input node.
     result (dict): The result of the query for the input node.
     result_parsed (DataFrame): The parsed results for the input node.
     result_ranked_by_primary_infores (DataFrame): The ranked results based on primary infores.
-    
+
     --------------
     Example:
     >>> input_node_id, result, result_parsed, result_ranked_by_primary_infores1 = Neiborhood_finder('Ovarian cancer',
                                                                                             node2_categories = ['biolink:SmallMolecule', 'biolink:Drug', 'biolink:ChemicalEntity'],
                                                                                             APInames = APInames,
                                                                                             metaKG = metaKG,
-                                                                                            API_predicates = API_predicates)   
+                                                                                            API_predicates = API_predicates)
     --------------
-    
+
     """
     from . import translator_query
 
@@ -1007,9 +1045,9 @@ def Neiborhood_finder(input_node, node2_categories, APInames, metaKG, API_predic
     input_node_info = name_resolver.lookup(input_node)
     input_node_id = input_node_info.curie
     print(input_node_id)
-    
+
     if len(input_node_category) == 0:
-        input_node_category = input_node_info.types 
+        input_node_category = input_node_info.types
     else:
         input_node_category = list(set(input_node_category).intersection(set(input_node_info.types)))
         if len(input_node_category) == 0:
@@ -1021,14 +1059,14 @@ def Neiborhood_finder(input_node, node2_categories, APInames, metaKG, API_predic
                                                                 metaKG, APInames)
 
     # Step 3: Format the query JSON for the input node
-    query_json = format_query_json([input_node_id], [], 
-                                   [input_node_category], 
-                                   node2_categories, 
+    query_json = format_query_json([input_node_id], [],
+                                   [input_node_category],
+                                   node2_categories,
                                    sele_predicates)
 
     # Step 4: Query the APIs in parallel
-    result = translator_query.parallel_api_query(query_json=query_json, 
-                             select_APIs= sele_APIs, 
+    result = translator_query.parallel_api_query(query_json=query_json,
+                             select_APIs= sele_APIs,
                              APInames=APInames,
                              API_predicates=API_predicates,
                              max_workers=len(sele_APIs))
@@ -1041,13 +1079,13 @@ def Neiborhood_finder(input_node, node2_categories, APInames, metaKG, API_predic
 def Path_finder(input_node1, input_node2, intermediate_categories, APInames, metaKG, API_predicates, input_node1_category = [], input_node2_category = []):
     """
     This function is used to find paths between two input nodes with intermediate categories.
-    
+
     --------------
     Parameters:
     input_node1 (str): The first input node, can be a gene name, protein name, or any other identifier.
     input_node2 (str): The second input node, can be a gene name, protein name, or any other identifier.
     intermediate_categories (list): A list of intermediate categories to be used in the path finding process.
-    
+
     --------------
     Returns:
     paths (DataFrame): A DataFrame containing the paths found between the two input nodes.
@@ -1072,7 +1110,7 @@ def Path_finder(input_node1, input_node2, intermediate_categories, APInames, met
     print(input_node1_id)
     input_node1_list = [input_node1_id]
     if len(input_node1_category) == 0:
-        input_node1_category = input_node1_info.types 
+        input_node1_category = input_node1_info.types
     else:
         input_node1_category = list(set(input_node1_category).intersection(set(input_node1_info.types)))
         if len(input_node1_category) == 0:
@@ -1084,7 +1122,7 @@ def Path_finder(input_node1, input_node2, intermediate_categories, APInames, met
     input_node2_list = [input_node2_id]
 
     if len(input_node2_category) == 0:
-        input_node2_category = input_node2_info.types 
+        input_node2_category = input_node2_info.types
     else:
         input_node2_category = list(set(input_node2_category).intersection(set(input_node2_info.types)))
         if len(input_node2_category) == 0:
@@ -1097,7 +1135,7 @@ def Path_finder(input_node1, input_node2, intermediate_categories, APInames, met
                                                                 metaKG, APInames)
     sele_predicates2, sele_APIs2, API_URLs2 = sele_predicates_API(input_node2_category,
                                                                 intermediate_categories,
-                                                                metaKG, APInames)    
+                                                                metaKG, APInames)
 
     query_json1 = format_query_json(input_node1_list,  # a list of identifiers for input node1
                                     [],  # id list for the intermediate node, it can be empty list if only want to query node1
@@ -1110,16 +1148,16 @@ def Path_finder(input_node1, input_node2, intermediate_categories, APInames, met
                                     input_node2_category,  # a list of categories of input node2
                                     intermediate_categories,  # a list of categories of the intermediate node
                                     sele_predicates2) # a list of predicates
-    
-    result1 = translator_query.parallel_api_query(query_json=query_json1, 
-                             select_APIs = sele_APIs1, 
-                             APInames=APInames, 
-                             API_predicates=API_predicates, 
+
+    result1 = translator_query.parallel_api_query(query_json=query_json1,
+                             select_APIs = sele_APIs1,
+                             APInames=APInames,
+                             API_predicates=API_predicates,
                              max_workers=len(sele_APIs1))
-    result2 = translator_query.parallel_api_query(query_json=query_json2, 
-                                select_APIs = sele_APIs2, 
-                                APInames=APInames, 
-                                API_predicates=API_predicates, 
+    result2 = translator_query.parallel_api_query(query_json=query_json2,
+                                select_APIs = sele_APIs2,
+                                APInames=APInames,
+                                API_predicates=API_predicates,
                                 max_workers=len(sele_APIs2))
 
     result_parsed1 = parse_KG(result1)
@@ -1133,11 +1171,11 @@ def Path_finder(input_node1, input_node2, intermediate_categories, APInames, met
     possible_paths = len(set(result_ranked_by_primary_infores1['output_node']).intersection(set(result_ranked_by_primary_infores2['output_node'])))
     print("Number of possible paths: ", possible_paths)
 
-    paths = merge_ranking_by_number_of_infores(result_ranked_by_primary_infores1, result_ranked_by_primary_infores2, 
+    paths = merge_ranking_by_number_of_infores(result_ranked_by_primary_infores1, result_ranked_by_primary_infores2,
                                             top_n = 30,
                                             fontsize=10,
                                             title_fontsize=12,)
-    
+
     return paths,  input_node1_id, input_node2_id, result1, result2, result_parsed1, result_parsed2, result_ranked_by_primary_infores1, result_ranked_by_primary_infores2
 
 # used. Dec 5, 2023 (Example_query_one_hop_with_category.ipynb)
@@ -1153,15 +1191,15 @@ def parse_KG(result):
     primary_knowledge_sources
     aggregator_knowledge_sources
     subject_predicate_object_primary_knowledge_sources_aggregator_knowledge_sources
-    
+
     '''
     # edited Dec 5, 2023
 
     result_parsed = {}
     for i in result:
-        
+
         subject_object = result[i]['subject'] + "_" + result[i]['object']
-        object_subject = result[i]['object'] + "_" + result[i]['subject']
+        # object_subject = result[i]['object'] + "_" + result[i]['subject']  # Unused variable
         #result_parsed["predicate"].append(result[i]['predicate'])
         #result_parsed["sources"].append(result[i]['sources'])
         #result_parsed["subject"].append(result[i]['subject'])
@@ -1171,8 +1209,8 @@ def parse_KG(result):
             result_parsed[subject_object]['predicate'] = [result[i]['predicate']]
             result_parsed[subject_object]['subject'] = result[i]['subject']
             result_parsed[subject_object]['object'] = result[i]['object']
-            
-            
+
+
             for j in result[i]['sources']:
                 if j['resource_role'] == 'primary_knowledge_source':
                     result_parsed[subject_object]['primary_knowledge_source'] = [j['resource_id']]
@@ -1207,17 +1245,17 @@ def parse_network_result(result, input_node1_list):
     for i in result:
         subject = result[i]['subject']
         object = result[i]['object']
-        predicate = result[i]['predicate']
-        sources = result[i]['sources']
+        # predicate = result[i]['predicate']  # Unused variable
+        # sources = result[i]['sources']  # Unused variable
 
         if subject == object:
             continue
-        
+
         if subject in dic_nodes:
             dic_nodes[subject].append(object)
         else:
             dic_nodes[subject] = [object]
-        
+
         if object in dic_nodes:
             dic_nodes[object].append(subject)
         else:
@@ -1244,7 +1282,7 @@ def parse_network_result(result, input_node1_list):
 
     for i in dic_with_input_nodes:
         dic_with_input_nodes[i] = list(set(dic_with_input_nodes[i]))
-            
+
 
 
 
@@ -1292,14 +1330,14 @@ def rank_by_primary_infores_input_as_list(result_parsed, input_nodes):
             type_of_nodes.append('object')
             Num_of_primary_infores.append(len(set(result_parsed[i]['primary_knowledge_source'])))
             unique_predicates.append(curr_predict)
-            
+
 
         elif object in input_nodes:
             input_nodes_list.append(object)
             output_nodes.append(subject)
             type_of_nodes.append('subject')
             unique_predicates.append(curr_predict)
-        
+
             Num_of_primary_infores.append(len(set(result_parsed[i]['primary_knowledge_source'])))
 
     colnames = output_nodes
@@ -1310,16 +1348,16 @@ def rank_by_primary_infores_input_as_list(result_parsed, input_nodes):
         if item in dic_id_map:
             new_colnames.append(dic_id_map[item])
         else:
-            new_colnames.append(item)   
+            new_colnames.append(item)
 
     rank_df['output_node'] = output_nodes
     rank_df['Name'] = new_colnames
     rank_df['Num_of_primary_infores'] = Num_of_primary_infores
     rank_df['type_of_nodes'] = type_of_nodes
     rank_df['unique_predicates'] = unique_predicates
-    
+
     rank_df['input_node'] = input_nodes_list
-    
+
     rank_df_ranked = rank_df.sort_values(by=['Num_of_primary_infores'], ascending=False)
     return(rank_df_ranked)
 
@@ -1344,13 +1382,13 @@ def rank_by_primary_infores(result_parsed, input_node):
             type_of_nodes.append('object')
             Num_of_primary_infores.append(len(set(result_parsed[i]['primary_knowledge_source'])))
             unique_predicates.append(curr_predict)
-            
+
 
         elif object == input_node:
             output_nodes.append(subject)
             type_of_nodes.append('subject')
             unique_predicates.append(curr_predict)
-        
+
             Num_of_primary_infores.append(len(set(result_parsed[i]['primary_knowledge_source'])))
 
     colnames = output_nodes
@@ -1361,16 +1399,16 @@ def rank_by_primary_infores(result_parsed, input_node):
         if item in dic_id_map:
             new_colnames.append(dic_id_map[item])
         else:
-            new_colnames.append(item)   
+            new_colnames.append(item)
 
     rank_df['output_node'] = output_nodes
     rank_df['Name'] = new_colnames
     rank_df['Num_of_primary_infores'] = Num_of_primary_infores
     rank_df['type_of_nodes'] = type_of_nodes
     rank_df['unique_predicates'] = unique_predicates
-    
-    
-    
+
+
+
     rank_df_ranked = rank_df.sort_values(by=['Num_of_primary_infores'], ascending=False)
     return(rank_df_ranked)
 
@@ -1378,13 +1416,13 @@ def rank_by_primary_infores(result_parsed, input_node):
 
 # used. Dec 5, 2023 (Example_query_rank_the_path.ipynb)
 def merge_by_ranking_index(result_ranked_by_primary_infores,
-                           result_ranked_by_primary_infores2, 
+                           result_ranked_by_primary_infores2,
                            top_n = 20,
                            title_fontsize = 12,
                            fontsize = 12,
                            ):
 
-    
+
     dic_rank1 = {}
     for i in range(0, result_ranked_by_primary_infores.shape[0]):
         dic_rank1[result_ranked_by_primary_infores['output_node'][i]] = 1 - i / result_ranked_by_primary_infores.shape[0]
@@ -1415,7 +1453,7 @@ def merge_by_ranking_index(result_ranked_by_primary_infores,
         if item in dic_id_map:
             new_colnames.append(dic_id_map[item])
         else:
-            new_colnames.append(item)   
+            new_colnames.append(item)
 
     result_xy_sorted.index = new_colnames
     result_xy_sorted = result_xy_sorted.sort_values(by=['score'], ascending=False)
@@ -1433,8 +1471,8 @@ def merge_by_ranking_index(result_ranked_by_primary_infores,
 
 
 
-def merge_ranking_by_number_of_infores(result_ranked_by_primary_infores, 
-                                       result_ranked_by_primary_infores1, 
+def merge_ranking_by_number_of_infores(result_ranked_by_primary_infores,
+                                       result_ranked_by_primary_infores1,
                                        top_n = 30,
                                        fontsize = 12,
                                        title_fontsize = 12,
@@ -1464,15 +1502,15 @@ def merge_ranking_by_number_of_infores(result_ranked_by_primary_infores,
     result_xy['output_node'] = result_xy.index
     # convert the output_node to preferred name
 
-    
-        
+
+
     #result_xy["output_node_name"] = new_colnames
     result_xy['predictes1'] = predicts_list1
     result_xy['predictes2'] = predicts_list2
 
     result_xy_sorted = result_xy.sort_values(by=['score'], ascending=False)
 
-    convert = False
+    # convert = False  # Unused variable
     colnames = result_xy_sorted.index.to_list()
 
     names = colnames
@@ -1482,7 +1520,7 @@ def merge_ranking_by_number_of_infores(result_ranked_by_primary_infores,
         if item in dic_id_map:
             new_colnames.append(dic_id_map[item])
         else:
-            new_colnames.append(item)   
+            new_colnames.append(item)
 
 
     result_xy_sorted.index = new_colnames
@@ -1497,11 +1535,11 @@ def merge_ranking_by_number_of_infores(result_ranked_by_primary_infores,
 def plot_path_bar(x,
                   y,
                     fontsize = 8,
-                    title_fontsize = 10, 
+                    title_fontsize = 10,
                     output_png="NE_heatmap.png"):
     #matplotlib.use('Agg')
-    
-    title = "Bridging nodes"
+
+    # title = "Bridging nodes"  # Unused variable
     fig = plt.figure(figsize=(5,5), dpi = 300)
     ax = fig.add_subplot(111)
     ax = sns.barplot(x=x, y=y, color='grey')
@@ -1531,7 +1569,7 @@ def get_curie(name):
 def get_pair_annotation(result, input_node_list):
     pairs_found = {}
     for i in result.keys():
-        
+
         if result[i]['subject'] in input_node_list and result[i]['object'] in input_node_list and result[i]['subject'] != result[i]['object']:
             pairs_found[i] = result[i]
     return pairs_found
@@ -1553,38 +1591,6 @@ def parse_pair_annotation(pairs_found, input_node_list):
         edge_list.append([pairs_found[i]['subject'],dic_names[pairs_found[i]['subject']],  pairs_found[i]['predicate'], pairs_found[i]['object'], dic_names[pairs_found[i]['object']], primary_source ])
     return edge_list
 
-#used
-
-def query_chatGPT4(customized_input):
-    message=[{"role": "user", 
-            "content": customized_input}]
-
-    response = openai.ChatCompletion.create(
-    #model="gpt-3.5-turbo",
-    model="gpt-4",
-    max_tokens=1000,
-    temperature=1.2,
-    messages = message)
-
-    #print(len(response.choices[0].message.content.split(" ")))
-
-    return(response.choices[0].message.content)
-
-def query_chatGPT(customized_input):
-    message=[{"role": "user", 
-            "content": customized_input}]
-
-    response = openai.ChatCompletion.create(
-    model="gpt-3.5-turbo",
-    #model="gpt-4",
-    max_tokens=1000,
-    temperature=1.2,
-    messages = message)
-
-    #print(len(response.choices[0].message.content.split(" ")))
-
-    return(response.choices[0].message.content)
-
 # to be removed
 def query_KP_all(subject_ids, object_ids, subject_categories, object_categories, predicates, API_list,metaKG, APInames):
 
@@ -1597,9 +1603,9 @@ def query_KP_all(subject_ids, object_ids, subject_categories, object_categories,
     result_dict = {}
     result_concept = {}
     # Query individual KP
-    
+
     # Needs parallel query
-    
+
 
     for API_sele in API_list:
         print(API_sele)
@@ -1607,24 +1613,25 @@ def query_KP_all(subject_ids, object_ids, subject_categories, object_categories,
             predicates_used = select_predicates_inKP(subject_categories,object_categories,API_sele,metaKG)
         else:
             predicates_used = predicates
-        
+
         query_json = format_query_json(subject_ids, object_ids, subject_categories, object_categories, predicates_used)
 
         print(query_json)
         try:
-            kg_output = query_KP(APInames[API_sele],query_json)
-            
-        except:
+            # kg_output = query_KP(APInames[API_sele],query_json)  # query_KP function not defined
+            kg_output = None  # Placeholder - function not available
+
+        except Exception:
             print("Connection Error")
             kg_output = None
-            
+
         if kg_output is not None:
             # if kg_output is  a dictionary
 
-            if type(kg_output) == dict and 'nodes' in kg_output.keys():
+            if isinstance(kg_output, dict) and 'nodes' in kg_output.keys():
                 if len(kg_output['nodes']) >0:
 
-                    print("Found: " + str(len(kg_output['edges'].keys())) + " nodes in " + API_sele) 
+                    print("Found: " + str(len(kg_output['edges'].keys())) + " nodes in " + API_sele)
                     print(predicates_used)
                     result_concept[API_sele] = predicates_used
                     result_dict[API_sele] = kg_output
@@ -1669,25 +1676,25 @@ def parse_result_old( API_keys_sele, API_keys_Not_include, predicates_forAnalysi
                 object = (curr_graph['object'])
                 if object.startswith("CL:"):
                     object = "CL" + object.split(":")[1]
-                
+
                 #exclude subclass_of
-                
+
                 Temp_APIkey.append(API_key)
                 Temp_subject_key.append(subject)
                 Temp_object_key.append(object)
                 Temp_predicate_key.append(predicate)
                 Temp_infores_key.append(infores)
-            
+
             #Temp_APIkey.append(API_key)
             #Temp_subject_key.append(subject)
             #Temp_object_key.append(object)
             #Temp_predicate_key.append(predicate)
             #Temp_infores_key.append(infores)
 
-    Temp_result_df = pd.DataFrame({'API': Temp_APIkey, 
+    Temp_result_df = pd.DataFrame({'API': Temp_APIkey,
                                    'Subject': Temp_subject_key,
-                                   "Object":Temp_object_key, 
-                                   "Predicate":Temp_predicate_key, 
+                                   "Object":Temp_object_key,
+                                   "Predicate":Temp_predicate_key,
                                    "Infores":Temp_infores_key})
 
     Temp_result_df.drop_duplicates(inplace=True)
@@ -1702,11 +1709,11 @@ def ranking_result_by_predicates_object(Temp_result_df):
     object_val_list = Temp_result_df['Object'].value_counts().index.tolist()
     object_val_value = Temp_result_df['Object'].value_counts().values.tolist()
 
-    
+
     dic_rank = {}
     for i in range(0,len(object_val_list)):
         dic_rank[object_val_list[i]] = object_val_value[i]
-  
+
 
     sorted_dic = sorted(dic_rank.items(), key=lambda x: x[1], reverse=True)
     return(sorted_dic)
@@ -1719,7 +1726,7 @@ def ranking_result_by_predicates_subject(Temp_result_df):
     dic_rank = {}
     for i in range(0,len(subject_val_list)):
         dic_rank[subject_val_list[i]] = subject_val_list[i]
-  
+
 
     sorted_dic = sorted(dic_rank.items(), key=lambda x: x[1], reverse=True)
     return(sorted_dic)
@@ -1737,7 +1744,7 @@ def get_ranking_by_predicates(sorted_dic, Temp_result_df, Top):
         #item_ranking.append(sorted_dic[i][0])
         sele_result = sorted_dic[i][0]
         dic_ranking[sorted_dic[i][0]] = list(set(list(pd.concat([Temp_result_df.loc[Temp_result_df['Object'].isin([sele_result])], Temp_result_df.loc[Temp_result_df['Subject'].isin([sele_result])]], axis=0)['Predicate'])))
-    
+
     return(dic_ranking)
 
 # to be removed
@@ -1752,7 +1759,7 @@ def get_ranking_by_infores(sorted_dic, Temp_result_df, Top):
         #item_ranking.append(sorted_dic[i][0])
         sele_result = sorted_dic[i][0]
         dic_ranking[sorted_dic[i][0]] = list(set(list(pd.concat([Temp_result_df.loc[Temp_result_df['Object'].isin([sele_result])], Temp_result_df.loc[Temp_result_df['Subject'].isin([sele_result])]], axis=0)['Infores'])))
-    
+
     return(dic_ranking)
 
 # to be removed
@@ -1767,7 +1774,7 @@ def get_ranking_by_kp(sorted_dic, Temp_result_df, Top):
         #item_ranking.append(sorted_dic[i][0])
         sele_result = sorted_dic[i][0]
         dic_ranking[sorted_dic[i][0]] = list(set(list(pd.concat([Temp_result_df.loc[Temp_result_df['Object'].isin([sele_result])], Temp_result_df.loc[Temp_result_df['Subject'].isin([sele_result])]], axis=0)['API'])))
-    
+
     return(dic_ranking)
 
 # to be revised
@@ -1797,20 +1804,14 @@ def connecting_two_dots_two_hops(sorted_dic1, sorted_dic):
 
     return(res_df)
 
-def select_result_to_analysis(sele_genes,Temp_result_df, Temp_result_df1 ):
-    
-    print(sele_genes)
-    for_plot = pd.concat([Temp_result_df1.loc[Temp_result_df1['Object'].isin(sele_genes)],
-            Temp_result_df.loc[Temp_result_df['Object'].isin(sele_genes)]], axis=0)
-
-    return(for_plot)
+# First definition of select_result_to_analysis removed - duplicate function
 
 # need revision
-def find_path_by_two_ends(subject1_ids, 
-                          subject1_categories, 
+def find_path_by_two_ends(subject1_ids,
+                          subject1_categories,
                           predicates1,
                           object_categories,
-                          subject2_ids, 
+                          subject2_ids,
                           subject2_categories,
                           predicates2,
                           API_list1,
@@ -1822,21 +1823,23 @@ def find_path_by_two_ends(subject1_ids,
                           metaKG,
                           APInames
                           ):
-    
+
     result_dic_node1, result_concept_node1 = query_KP_all(subject1_ids, [], subject1_categories, object_categories, predicates1, API_list1, metaKG, APInames)
     result_dic_node2, result_concept_node2 = query_KP_all(subject2_ids, [], subject2_categories, object_categories, predicates2, API_list2, metaKG, APInames)
 
-    
-    Temp_result_df1 = parse_result(API1_keys_forAnalysis,API1_keys_NotforAnalysis, result_concept_node1, result_dic_node1)
+
+    # Temp_result_df1 = parse_result(API1_keys_forAnalysis,API1_keys_NotforAnalysis, result_concept_node1, result_dic_node1)  # parse_result function not defined
+    Temp_result_df1 = None  # Placeholder - function not available
     sorted_dic1 = ranking_result_by_predicates_object(Temp_result_df1)
 
     dic_ranking1 = get_ranking_by_infores(sorted_dic1, Temp_result_df1, 20)
 
-    Temp_result_df2 = parse_result(API2_keys_forAnalysis,API2_keys_NotforAnalysis, result_concept_node2, result_dic_node2)
+    # Temp_result_df2 = parse_result(API2_keys_forAnalysis,API2_keys_NotforAnalysis, result_concept_node2, result_dic_node2)  # parse_result function not defined
+    Temp_result_df2 = None  # Placeholder - function not available
     sorted_dic2 = ranking_result_by_predicates_object(Temp_result_df2)
 
     dic_ranking2 = get_ranking_by_infores(sorted_dic2, Temp_result_df2, 20)
-    
+
     connection_nodes_df = connecting_two_dots_two_hops(sorted_dic1, sorted_dic2)
 
     # bind all results in to a dictionary
@@ -1855,7 +1858,7 @@ def find_path_by_two_ends(subject1_ids,
 
 
 def select_result_to_analysis(sele_genes,Temp_result_df1, Temp_result_df2 ):
-    
+
     print("selected_path: "+ ';'.join(sele_genes))
     for_plot = pd.concat([  Temp_result_df1.loc[Temp_result_df1['Object'].isin(sele_genes)],
                             Temp_result_df2.loc[Temp_result_df2['Object'].isin(sele_genes)]], axis=0)
@@ -1865,10 +1868,10 @@ def select_result_to_analysis(sele_genes,Temp_result_df1, Temp_result_df2 ):
 
 
 def plot_graph_by_predicates(for_plot):
-    graph = nx.from_pandas_edgelist(for_plot, 
+    graph = nx.from_pandas_edgelist(for_plot,
                                 source='Subject',
-                                target='Object', 
-                                edge_attr=["Predicate"], 
+                                target='Object',
+                                edge_attr=["Predicate"],
                                 create_using=nx.MultiDiGraph)
 
 
@@ -1912,11 +1915,11 @@ def plot_graph_by_predicates(for_plot):
 
 
 def plot_graph_by_infores(for_plot):
-        
-    graph = nx.from_pandas_edgelist(for_plot, 
+
+    graph = nx.from_pandas_edgelist(for_plot,
                                     source='Subject',
-                                    target='Object', 
-                                    edge_attr=["Infores"], 
+                                    target='Object',
+                                    edge_attr=["Infores"],
                                     create_using=nx.MultiDiGraph)
 
 
@@ -1960,11 +1963,11 @@ def plot_graph_by_infores(for_plot):
 
 
 def plot_graph_by_API(for_plot):
-        
-    graph = nx.from_pandas_edgelist(for_plot, 
+
+    graph = nx.from_pandas_edgelist(for_plot,
                                     source='Subject',
-                                    target='Object', 
-                                    edge_attr=["API"], 
+                                    target='Object',
+                                    edge_attr=["API"],
                                     create_using=nx.MultiDiGraph)
 
 
@@ -2042,7 +2045,7 @@ def extract_json(txt):
             try:
                 jsn = json.loads(substr)
                 return jsn
-            except Exception as e:
+            except Exception:
                 rgt = txt.find('}', rgt+1)
         lft = txt.find('{', lft+1)
     return None
@@ -2063,13 +2066,13 @@ def TRAPI_json_validation(query_json_cur_clean, ALL_predicates, ALL_categories):
                 else:
                     if 'predicates' not in query_json_cur_clean['message']['query_graph']['edges']['e1'].keys():
                         print('predicates is missing')
-                    
+
                     else:
                         if len(set(query_json_cur_clean['message']['query_graph']['edges']['e1']['predicates']).intersection(set(ALL_predicates))) == 0:
                             print('predicates is not in the KG')
                         else:
                             print("Predicates ok!")
-                    
+
                 if 'nodes' not in query_json_cur_clean['message']['query_graph'].keys():
                     print('nodes is missing')
                 else:
@@ -2083,7 +2086,7 @@ def TRAPI_json_validation(query_json_cur_clean, ALL_predicates, ALL_categories):
                                 print('categories is not in the KG')
                             else:
                                 print("node0 category OK!")
-                    
+
                     if 'n1' not in query_json_cur_clean['message']['query_graph']['nodes'].keys():
                         print('n1 is missing')
                     else:
@@ -2120,25 +2123,25 @@ def format_id(query_json_cur_clean):
 
 def query_chatGPT(customized_input, model="gpt-3.5-turbo"):
     message = [{"role": "user", "content": customized_input}]
-    
+
     response = openai.chat.completions.create(
         model=model,
         max_tokens=1000,
         temperature=0.3,
         messages=message,
     )
-    
+
     # print(len(response.choices[0].message.content.split(" ")))
     return response.choices[0].message.content
 
 def query_chatGPT4(customized_input):
     return query_chatGPT(customized_input, "gpt-4")
-    
+
 
 def ask_chatGPT(prompt_text):
     response = query_chatGPT(prompt_text)
     return response
-        
+
 
 def ask_chatGPT4(prompt_text):
     response = query_chatGPT4(prompt_text)
@@ -2163,7 +2166,7 @@ def load_translator_resources():
     from . import translator_metakg
 
     Translator_KP_info,APInames= translator_kpinfo.get_translator_kp_info()
-    metaKG = translator_metakg.get_KP_metadata(APInames) 
+    metaKG = translator_metakg.get_KP_metadata(APInames)
     APInames,metaKG = translator_metakg.add_plover_API(APInames, metaKG)
     return  APInames, metaKG, Translator_KP_info
 
@@ -2181,11 +2184,11 @@ def visulize_path(input_node1_id, intermediate_node, input_node3_id, result, res
             #forplot_predicate.append(result[k]['predicate'].split(':')[1])
             cur_sources_list = []
             sources = result[k]['sources']
-            
+
             for s in sources:
                 cur_source = s['resource_id']
                 cur_sources_list.append(cur_source)
-                
+
             forplot_Infores.append(cur_sources_list)
 
             forplot_predicate.append(result[k]['predicate'].split(':')[1] + "::" + cur_sources_list[0])
@@ -2197,14 +2200,14 @@ def visulize_path(input_node1_id, intermediate_node, input_node3_id, result, res
             #forplot_predicate.append(result2[k]['predicate'].split(':')[1])
             cur_sources_list = []
             sources = result2[k]['sources']
-            
+
             for s in sources:
                 cur_source = s['resource_id']
                 cur_sources_list.append(cur_source)
-                
+
             forplot_Infores.append(cur_sources_list)
             forplot_predicate.append(result2[k]['predicate'].split(':')[1] + "::" +  cur_sources_list[0])
-            
+
     forplot =  pd.DataFrame({"Subject":forplot_subject, "Object":forplot_object, "Predicates":forplot_predicate})
 
     # get preferred name
@@ -2216,14 +2219,14 @@ def visulize_path(input_node1_id, intermediate_node, input_node3_id, result, res
         if item in dic_id_map:
             new_subject_name.append(dic_id_map[item])
         else:
-            new_subject_name.append(item)   
+            new_subject_name.append(item)
 
     new_object_name = []
     for item in object_name:
         if item in dic_id_map:
             new_object_name.append(dic_id_map[item])
         else:
-            new_object_name.append(item)         
+            new_object_name.append(item)
     forplot['Subject_name'] = new_subject_name
     forplot['Object_name'] = new_object_name
 
@@ -2233,7 +2236,7 @@ def visulize_path(input_node1_id, intermediate_node, input_node3_id, result, res
     # if check1 is equal to check2, then drop one of them
     forplot['check1'] = forplot['Subject_name'] + '::' + forplot['Predicates'] + '::' + forplot['Object_name']
     forplot['check2'] = forplot['Object_name'] + '::' + forplot['Predicates'] + '::' + forplot['Subject_name']
-    
+
     # check if check1 is equal to check2, if so, drop one of them
     to_be_dropped = []
     check1_list = list(forplot['check1'].values)
@@ -2253,7 +2256,7 @@ def visulize_path(input_node1_id, intermediate_node, input_node3_id, result, res
     forplot = forplot.reset_index(drop=True)
 
     graph = nx.from_pandas_edgelist(forplot, source='Subject_name', target='Object_name', edge_attr=[ 'Predicates'], create_using=nx.MultiGraph)
-    
+
     graph_style = [{'selector': 'node[id]',
                              'style': {
                                   'font-family': 'Arial',
