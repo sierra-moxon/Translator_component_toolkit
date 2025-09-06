@@ -1439,7 +1439,7 @@ def merge_by_ranking_index(result_ranked_by_primary_infores,
 
     result_ranked = pd.DataFrame.from_dict(dic_merged_rank, orient='index', columns=['score'])
     result_ranked = result_ranked.sort_values(by=['score'], ascending=False)
-    result_ranked = result_ranked.reset_index()
+    result_ranked = result_ranked.reset_index(
     result_ranked.columns = ['output_node', 'score']
     result_xy_sorted = result_ranked
     result_xy_sorted.index = result_ranked['output_node']
