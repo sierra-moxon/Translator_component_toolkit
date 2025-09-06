@@ -55,11 +55,6 @@ dev-dependencies = [
 
 [tool.uv.sources]
 
-[tool.uv.tools]
-server = "python main.py"
-mcp-server = "fastmcp run main.py:mcp"
-mcp-http = "fastmcp run main.py:mcp --transport http --port 8000"
-
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py", "*_test.py"]
