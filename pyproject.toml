@@ -32,7 +32,12 @@ dependencies = [
     "openai",
     "ipykernel",
     "fastmcp>=2.12.2",
+    "click>=8.2.1",
 ]
+
+[project.scripts]
+tct = "TCT.cli:main"
+tct-server = "main:main"
 
 [project.urls]
 Homepage = "https://github.com/NCATSTranslator/Translator_component_toolkit"

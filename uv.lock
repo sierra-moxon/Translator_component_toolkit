@@ -2725,6 +2725,7 @@ name = "tct"
 version = "0.1.2"
 source = { editable = "." }
 dependencies = [
+    { name = "click" },
     { name = "fastmcp" },
     { name = "ipycytoscape" },
     { name = "ipykernel" },
@@ -2751,6 +2752,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "click", specifier = ">=8.2.1" },
     { name = "fastmcp", specifier = ">=2.12.2" },
     { name = "ipycytoscape" },
     { name = "ipykernel" },
