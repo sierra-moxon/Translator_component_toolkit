@@ -36,7 +36,6 @@ dependencies = [
 ]
 
 [project.scripts]
-tct = "TCT.cli:main"
 tct-server = "main:main"
 
 [project.urls]
