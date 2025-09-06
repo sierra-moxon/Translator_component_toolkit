@@ -12,7 +12,7 @@ This server provides access to biomedical translator tools including:
 
 from fastmcp import FastMCP
 from mcp.shared.exceptions import McpError
-from mcp.types import ErrorData, INTERNAL_ERROR, INVALID_PARAMS
+from mcp.types import ErrorData, INTERNAL_ERROR
 
 # Import functions from translator_component_toolkit modules using relative imports
 from .name_resolver import lookup, synonyms, batch_lookup

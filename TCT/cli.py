@@ -12,7 +12,6 @@ This CLI provides command-line access to all TCT functionality including:
 
 import json
 import sys
-from typing import Optional, List
 
 import click
 import pandas as pd
@@ -20,9 +19,8 @@ import pandas as pd
 from .name_resolver import lookup, synonyms, batch_lookup
 from .node_normalizer import get_normalized_nodes
 from .translator_kpinfo import get_translator_kp_info
-from .translator_metakg import get_KP_metadata, add_new_API_for_query, add_plover_API
+from .translator_metakg import get_KP_metadata
 from .translator_query import get_translator_API_predicates, optimize_query_json, query_KP, parallel_api_query
-from .trapi import query as trapi_query
 
 
 def print_json(data):
