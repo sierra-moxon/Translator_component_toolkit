@@ -11,3 +11,8 @@ __pycache__
 *.log
 *.png
 
+.idea/
+.coverage/
+htmlcov/
+coverage.xml
+.coverage

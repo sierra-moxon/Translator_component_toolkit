@@ -1,6 +1,5 @@
 import requests
 from copy import deepcopy
-import json
 import pandas
 from TCT import translator_metakg
 from TCT import translator_kpinfo
@@ -33,8 +32,8 @@ def get_translator_API_predicates() -> tuple[dict, pandas.DataFrame, dict]:
     APInames,metaKG = translator_metakg.add_plover_API(APInames, metaKG)
     print(metaKG.shape)
     # Step 3: list metaKG information
-    All_predicates = list(set(metaKG['Predicate']))
-    All_categories = list((set(list(set(metaKG['Subject']))+list(set(metaKG['Object'])))))
+    # All_predicates = list(set(metaKG['Predicate']))  # Unused variable
+    # All_categories = list((set(list(set(metaKG['Subject']))+list(set(metaKG['Object'])))))  # Unused variable
     API_withMetaKG = list(set(metaKG['API']))
 
     # generate a dictionary of API and its predicates
