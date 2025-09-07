@@ -127,6 +127,7 @@ def parallel_api_query(query_json, select_APIs, APInames, API_predicates,max_wor
     '''
     # Parallel query
     result = []
+    no_results_returned = []
     from concurrent.futures import ThreadPoolExecutor, as_completed
     from copy import deepcopy
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -141,7 +142,8 @@ def parallel_api_query(query_json, select_APIs, APInames, API_predicates,max_wor
                 if 'knowledge_graph' in data:
                     result.append(data)
             except Exception as exc:
-                print('%r generated an exception: %s' % (url, exc))
+                no_results_returned.append(url)
+                #print('%r generated an exception: %s' % (url, exc))
     
     included_KP_ID = []
     for i in range(0,len(result)):

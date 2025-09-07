@@ -258,3 +258,64 @@ def trapi_query_endpoint(url: str):
         return trapi_query(url)
     except Exception as e:
         raise McpError(ErrorData(INTERNAL_ERROR, f"TRAPI query error: {str(e)}")) from e
+    
+
+# Neiborhood finder tool
+@mcp.tool()
+
+def Neiborhood_finder(input_node, node2_categories, APInames, metaKG, API_predicates, input_node_category = []):
+    """
+    This function is used to find the neighborhood of a given input node with intermediate categories.
+
+    --------------
+    Parameters:
+    input_node (str): The input node, can be a gene name, protein name, or any other identifier.
+    node2_categories (list): A list of intermediate categories to be used in the neighborhood finding process.
+    APInames (dict): A dictionary containing the names of the APIs to be used.
+    metaKG (DataFrame): The metadata knowledge graph containing information about the APIs and their predicates.
+    API_predicates (dict): A dictionary containing the predicates for each API.
+    input_node_category (list): Optional. A list of categories for the input node. If empty, it will be derived from the input node's types.
+
+    --------------
+    Returns:
+    input_node_id (str): The curie id of the input node.
+    result (dict): The result of the query for the input node.
+    result_parsed (DataFrame): The parsed results for the input node.
+    result_ranked_by_primary_infores (DataFrame): The ranked results based on primary infores.
+
+    --------------
+    Example:
+    >>> input_node_id, result, result_parsed, result_ranked_by_primary_infores1 = Neiborhood_finder('Ovarian cancer',
+                                                                                            node2_categories = ['biolink:SmallMolecule', 'biolink:Drug', 'biolink:ChemicalEntity'],
+                                                                                            APInames = APInames,
+                                                                                            metaKG = metaKG,
+                                                                                            API_predicates = API_predicates)
+    --------------
+
+    """
+    from TCT import neighborhood_finder
+    import translator_metakg
+    try:
+        APInames, metaKG, Translator_KP_info= translator_metakg.load_translator_resources()
+        All_predicates = list(set(metaKG['Predicate']))
+        All_categories = list((set(list(set(metaKG['Subject']))+list(set(metaKG['Object'])))))
+        API_withMetaKG = list(set(metaKG['API']))
+
+            # generate a dictionary of API and its predicates
+        API_predicates = {}
+        for api in API_withMetaKG:
+            API_predicates[api] = list(set(metaKG[metaKG['API'] == api]['Predicate']))
+
+        selected_APIlist = []
+
+        if len(selected_APIlist) == 0:
+            select_APIs = APInames
+        else:
+            select_APIs = {k: APInames[k] for k in selected_APIlist if k in APInames}
+
+        selected_metaKG = metaKG[metaKG['API'].isin(select_APIs.keys())]
+
+        return neighborhood_finder(input_node, node2_categories, APInames, metaKG, API_predicates, input_node_category)
+    except Exception as e:
+        raise McpError(ErrorData(INTERNAL_ERROR, f"Neighborhood finder error: {str(e)}")) from e
+
