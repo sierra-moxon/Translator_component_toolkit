@@ -9,7 +9,7 @@ description = "Translator Component Toolkit"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
-    {name = "Guangrong Qin", email = "guangrong.qin@isbscience.org"}
+    {name = "Guangrong Qin, Yue Zhang, Sierra Moxon", email = "guangrong.qin@isbscience.org"}
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
