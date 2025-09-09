@@ -17,7 +17,7 @@ Connecting large language models to convert user's questions into TRAPI queries.
 
 ### Install Requirements
 
-To install TCT as a python library, you can install the library using `pip install TCT` from the command line. The current released version is TCT.0.1.2. This the recommended approach for installation. 
+To install TCT as a python library, you can install the library using `pip install TCT` from the command line. This the recommended approach for installation. 
 
 #### Development Installation
 
