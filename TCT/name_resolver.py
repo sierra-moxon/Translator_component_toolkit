@@ -26,7 +26,7 @@ def lookup(query: str, return_top_response:bool=True, return_synonyms:bool=False
     return_synonyms : bool
         If true, the resulting TranslatorNode objects contain a list of synonyms. If false, they do not include synonyms. Default: False
     **kwargs
-        Other arguments to `lookup`
+        Other arguments to `lookup`. Some possible arguments: `limit=20` would limit the results to 20. `autocomplete=True` indicates that the query string can be incomplete. `biolink_type="biolink:Disease` indicates that all returned results should be diseases. For more examples, see [this](https://name-lookup.ci.transltr.io/docs#/lookup/lookup_curies_get_lookup_get).
 
     Returns
     -------
