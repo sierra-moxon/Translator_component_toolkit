@@ -1,10 +1,9 @@
-
-from TCT import ID_convert_to_preferred_name_nodeNormalizer
+from node_normalizer import ID_convert_to_preferred_name_nodeNormalizer
 import networkx as nx
 from pyvis.network import Network
 
-def visualize_neiborhood_graph(result, show_label=True, height="1000px", width="100%"):
-    '''Visulaize the neighborhood graph using pyvis
+def visualize_neighborhood_graph(result, show_label=True, height="1000px", width="100%"):
+    '''Visualize the neighborhood graph using pyvis
     Args:
         result: the output from the KP query, a dictionary or json format
         show_label: whether to convert the node id to preferred name
