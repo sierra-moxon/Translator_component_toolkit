@@ -564,6 +564,15 @@ def select_predicates_inKP(sub_list,obj_list,KPname,metaKG):
 
 # Used. Jan 5, 2024
 def ID_convert_to_preferred_name_nodeNormalizer(id_list):
+    '''
+    Convert a list of CURIEs to their preferred names using NodeNorm.
+    Arg:
+        id_list: list of CURIEs to be converted
+    Returns:
+        dic_id_map: dictionary mapping CURIEs to their preferred names
+    Example:
+        dic_id_map = ID_convert_to_preferred_name_nodeNormalizer(["NCBIGene:1234", "NCBIGene:5678"])
+    '''
     dic_id_map = {}
     unrecoglized_ids = []
     recoglized_ids = []
@@ -1008,6 +1017,80 @@ def format_query_json(subject_ids, object_ids, subject_categories, object_catego
 
     return(query_json_temp)
 
+
+def Neighborhood_finder_mcp(input_node, node2_categories):
+    """
+    This function is used to find the neighborhood connections of a given input node with the specified categories. The categories defined must be a predifined  biolink category.
+
+    --------------
+    Parameters:
+    input_node (str): The input node, can be a gene name, protein name, or any other identifier.
+    node2_categories (list): A list of intermediate categories to be used in the neighborhood finding process.
+    
+    --------------
+    Returns:
+    result: the ranked results of the query for the input node.
+
+    --------------
+    Example:
+    >>> result = Neighborhood_finder_mcp('Ovarian cancer',
+                                        node2_categories = ['biolink:SmallMolecule', 'biolink:Drug', 'biolink:ChemicalEntity'])
+    --------------
+
+    """
+    from . import translator_query
+    from . import translator_metakg
+    from . import translator_kpinfo
+
+    APInames, metaKG, Translator_KP_info= translator_metakg.load_translator_resources()
+    All_predicates = list(set(metaKG['Predicate']))
+    All_categories = list((set(list(set(metaKG['Subject']))+list(set(metaKG['Object'])))))
+    API_withMetaKG = list(set(metaKG['API']))
+
+        # generate a dictionary of API and its predicates
+    API_predicates = {}
+    for api in API_withMetaKG:
+        API_predicates[api] = list(set(metaKG[metaKG['API'] == api]['Predicate']))
+        
+
+    # Step 1: Resolve the input node to get its curie id and categories
+    input_node_info = name_resolver.lookup(input_node)
+    input_node_id = input_node_info.curie
+    print(input_node_id)
+
+    if len(input_node_category) == 0:
+        input_node_category = input_node_info.types
+    else:
+        input_node_category = list(set(input_node_category).intersection(set(input_node_info.types)))
+        if len(input_node_category) == 0:
+            input_node_category = input_node_info.types
+
+    # Step 2: Select predicates and APIs based on the intermediate categories
+    sele_predicates, sele_APIs, API_URLs = sele_predicates_API(input_node_category,
+                                                                node2_categories,
+                                                                metaKG, APInames)
+
+    # Step 3: Format the query JSON for the input node
+    query_json = format_query_json([input_node_id], [],
+                                   [input_node_category],
+                                   node2_categories,
+                                   sele_predicates)
+
+    # Step 4: Query the APIs in parallel
+    result = translator_query.parallel_api_query(query_json=query_json,
+                             select_APIs= sele_APIs,
+                             APInames=APInames,
+                             API_predicates=API_predicates,
+                             max_workers=len(sele_APIs))
+    result_parsed = parse_KG(result)
+        # Step 7: Ranking the results. This ranking method is based on the number of unique
+        # primary infores. It can only be used to rank the results with one defined node.
+    result_ranked_by_primary_infores1 = rank_by_primary_infores(result_parsed, input_node_id)   # input_node1_id is the curie id of the
+    ranked_result = visulization_one_hop_ranking(result_ranked_by_primary_infores1, result_parsed, 
+                                num_of_nodes = 50, input_query = input_node_id, 
+                                fontsize = 5)
+
+    return ranked_result
 
 def Neiborhood_finder(input_node, node2_categories, APInames, metaKG, API_predicates, input_node_category = []):
     """
