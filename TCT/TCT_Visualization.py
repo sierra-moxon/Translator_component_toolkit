@@ -1,4 +1,6 @@
-from node_normalizer import ID_convert_to_preferred_name_nodeNormalizer
+
+from .node_normalizer import ID_convert_to_preferred_name_nodeNormalizer
+
 import networkx as nx
 from pyvis.network import Network
 
