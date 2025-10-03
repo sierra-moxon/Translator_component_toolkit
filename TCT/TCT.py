@@ -1020,7 +1020,7 @@ def format_query_json(subject_ids, object_ids, subject_categories, object_catego
 
 def Neighborhood_finder_mcp(input_node, node2_categories):
     """
-    This function is used to find the neighborhood connections of a given input node with the specified categories. The categories defined must be a predifined  biolink category.
+    This function is used to find the neighborhood connections of a given input node with the specified categories. The categories defined must be a predefined  biolink category.
 
     --------------
     Parameters:
