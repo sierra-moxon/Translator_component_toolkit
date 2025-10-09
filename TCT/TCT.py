@@ -1098,7 +1098,7 @@ def Neiborhood_finder(input_node, node2_categories, APInames, metaKG, API_predic
 
     --------------
     Parameters:
-    input_node (str): The input node, can be a gene name, protein name, or any other identifier.
+    input_node (str): The input node - should be a CURIE id.
     node2_categories (list): A list of intermediate categories to be used in the neighborhood finding process.
     APInames (dict): A dictionary containing the names of the APIs to be used.
     metaKG (DataFrame): The metadata knowledge graph containing information about the APIs and their predicates.
@@ -1114,7 +1114,7 @@ def Neiborhood_finder(input_node, node2_categories, APInames, metaKG, API_predic
 
     --------------
     Example:
-    >>> input_node_id, result, result_parsed, result_ranked_by_primary_infores1 = Neiborhood_finder('Ovarian cancer',
+    >>> input_node_id, result, result_parsed, result_ranked_by_primary_infores1 = Neiborhood_finder('MONDO:0008170', #Ovarian Cancer
                                                                                             node2_categories = ['biolink:SmallMolecule', 'biolink:Drug', 'biolink:ChemicalEntity'],
                                                                                             APInames = APInames,
                                                                                             metaKG = metaKG,
@@ -1122,11 +1122,12 @@ def Neiborhood_finder(input_node, node2_categories, APInames, metaKG, API_predic
     --------------
 
     """
+    from . import node_normalizer
     from . import translator_query
 
+    input_node_id = input_node
     # Step 1: Resolve the input node to get its curie id and categories
-    input_node_info = name_resolver.lookup(input_node)
-    input_node_id = input_node_info.curie
+    input_node_info = node_normalizer.get_normalized_nodes(input_node_id)
     print(input_node_id)
 
     if len(input_node_category) == 0:
@@ -1165,8 +1166,8 @@ def Path_finder(input_node1, input_node2, intermediate_categories, APInames, met
 
     --------------
     Parameters:
-    input_node1 (str): The first input node, can be a gene name, protein name, or any other identifier.
-    input_node2 (str): The second input node, can be a gene name, protein name, or any other identifier.
+    input_node1 (str): The first input node - should be a CURIE id.
+    input_node2 (str): The second input node - should be a CURIE id.
     intermediate_categories (list): A list of intermediate categories to be used in the path finding process.
 
     --------------
@@ -1182,15 +1183,17 @@ def Path_finder(input_node1, input_node2, intermediate_categories, APInames, met
     result_ranked_by_primary_infores2 (DataFrame): The ranked results for the second
     --------------
     Example:
-    >>> paths, input_node1_id, input_node2_id, result1, result2, result_parsed1, result_parsed2, result_ranked_by_primary_infores1, result_ranked_by_primary_infores2 = Path_finder('WNT7B', 'NPM1', ['biolink:Gene', 'biolink:Protein'])
+    >>> paths, input_node1_id, input_node2_id, result1, result2, result_parsed1, result_parsed2, result_ranked_by_primary_infores1, result_ranked_by_primary_infores2 = Path_finder('NCBIGene:7477', 'NCBIGene:4869', ['biolink:Gene', 'biolink:Protein']) # Input genes are WNT7B, NPM1
     --------------
 
     """
-    from . import name_resolver
+    from . import node_normalizer
     from . import translator_query
-    input_node1_info = name_resolver.lookup(input_node1)
-    input_node1_id = input_node1_info.curie
+    input_node1_id = input_node1
+    input_node2_id = input_node2
     print(input_node1_id)
+    normalized_node_dict = node_normalizer.get_normalized_nodes([input_node1_id, input_node2_id])
+    input_node1_info = normalized_node_dict[input_node1]
     input_node1_list = [input_node1_id]
     if len(input_node1_category) == 0:
         input_node1_category = input_node1_info.types
@@ -1199,8 +1202,7 @@ def Path_finder(input_node1, input_node2, intermediate_categories, APInames, met
         if len(input_node1_category) == 0:
             input_node1_category = input_node1_info.types
 
-    input_node2_info = name_resolver.lookup(input_node2)
-    input_node2_id = input_node2_info.curie
+    input_node2_info = normalized_node_dict[input_node2_id]
     print(input_node2_id)
     input_node2_list = [input_node2_id]
 
