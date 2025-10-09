@@ -16,7 +16,7 @@ def get_normalized_nodes(query: str | list[str],
         return_equivalent_identifiers:bool=False,
         **kwargs):
     """
-    A wrapper around the `get_normalized_nodes` api endpoint. Given a CURIE or a list of CURIEs, this returns a list of normalized identifiers.
+    A wrapper around the `get_normalized_nodes` api endpoint. Given a CURIE or a list of CURIEs, this returns either a single TranslatorNode or a dict of CURIE ids to TranslatorNodes.
     
     Parameters
     ----------
@@ -44,7 +44,7 @@ def get_normalized_nodes(query: str | list[str],
     if response.status_code == 200:
         result = response.json()
         if len(result) == 0:
-            raise LookupError('No matches found for the given input: ' + query)
+            raise LookupError('No matches found for the given input: ' + str(query))
         else:
             normalized_dict = {}
             for k, node in result.items():
