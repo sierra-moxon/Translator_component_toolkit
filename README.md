@@ -23,7 +23,7 @@ To install TCT as a python library:
 pip install TCT
 ```
 
-This the recommended approach for installation. 
+**This the recommended approach for installation.**
 
 
 #### Development Installation
