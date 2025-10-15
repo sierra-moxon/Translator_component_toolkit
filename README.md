@@ -61,8 +61,8 @@ pip install -e .
 #### KG overview
 Explore different KGs **[KG overview](https://github.com/gloriachin/Translator_component_toolkit/tree/main/notebooks/overview_of_KGs.ipynb)**
 
-#### Connection finder
-Example notebook for **[ConnectionFinder](https://github.com/gloriachin/Translator_component_toolkit/tree/main/notebooks/Connection_finder.ipynb)**
+#### Neighborhood finder
+Example notebook for **[NeighborhoodFinder](https://github.com/gloriachin/Translator_component_toolkit/tree/main/notebooks/Neighborhood_finder.ipynb)**
 
 #### Path finder
 Example notebook for **[PathFinder](https://github.com/gloriachin/Translator_component_toolkit/tree/main/notebooks/Path_finder.ipynb)**
