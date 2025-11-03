@@ -10,14 +10,22 @@ import requests
 from .translator_node import TranslatorNode
 
 
-URL = 'https://nodenorm.transltr.io/'
+URL = 'https://nodenorm.ci.transltr.io/'
+
+def status():
+    """
+    Returns the status of the Node Normalizer API.
+    """
+    response = requests.get(f'{URL}status')
+    response.raise_for_status()
+    return response.json()
 
 def get_normalized_nodes(query: str | list[str],
         return_equivalent_identifiers:bool=False,
         **kwargs):
     """
     A wrapper around the `get_normalized_nodes` api endpoint. Given a CURIE or a list of CURIEs, this returns either a single TranslatorNode or a dict of CURIE ids to TranslatorNodes.
-    
+
     Parameters
     ----------
     query : str

@@ -16,7 +16,9 @@ def status():
     """
     Returns the status of the Name Resolver API.
     """
-    return requests.get(URL + 'status').json()
+    response = requests.get(URL + 'status')
+    response.raise_for_status()
+    return response.json()
 
 
 def lookup(query: str, return_top_response:bool=True, return_synonyms:bool=False, limit:int=10, **kwargs):

@@ -1,6 +1,5 @@
 import pytest
 import TCT
-from TCT import TranslatorNode
 
 
 def test_nameres_status():
