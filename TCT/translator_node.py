@@ -5,7 +5,7 @@ import typing
 @dataclass
 class TranslatorAttribute:
     """
-    Class thar represents Translator node or edge attributes
+    Class that represents Translator node or edge attributes
     """
 
     attribute_type_id: str
