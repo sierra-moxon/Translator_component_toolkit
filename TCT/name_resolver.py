@@ -9,7 +9,7 @@ import requests
 
 from .translator_node import TranslatorNode
 
-URL = 'https://name-lookup.ci.transltr.io/'
+URL = 'https://name-lookup.transltr.io/'
 """This is the root URL for the API."""
 
 def status():
