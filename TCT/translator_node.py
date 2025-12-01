@@ -1,5 +1,30 @@
 # translator graph node
 from dataclasses import dataclass
+import typing
+
+@dataclass
+class TranslatorAttribute:
+    """
+    Class that represents Translator node or edge attributes
+    """
+
+    attribute_type_id: str
+
+    value: typing.Any
+
+    value_type_id: str | None = None
+
+    original_attribute_name: str | None = None
+
+    value_url: str | None = None
+
+    attribute_source: str | None = None
+
+    description: str | None = None
+
+    attributes: list | None = None
+
+
 
 @dataclass
 class TranslatorNode:
@@ -25,6 +50,12 @@ class TranslatorNode:
     curie_synonyms: list[str] | None = None
     "list of synonymous CURIE ids (in the same order as synonyms)"
 
+    attributes: list[TranslatorAttribute] | None = None
+    "List of node attributes (which are key-value pairs."
+
+    taxa: list[str] | None = None
+    "List of taxa for the given node (i.e. 'NCBITaxon:9606')"
+
     # identifier is just another way to access/set the CURIE.
     @property
     def identifier(self):
@@ -36,6 +67,28 @@ class TranslatorNode:
         """identifier is the CURIE id for the node."""
         self.curie = i
 
+    @property
+    def categories(self):
+        return self.types
+
+    @classmethod
+    def from_dict(cls, data_dict:dict, return_synonyms=False):
+        """Creates a TranslatorNode object from a data dict."""
+        if 'curie' not in data_dict:
+            raise ValueError('The input data dict must have a "curie" key.')
+        n = cls(data_dict['curie'])
+        if 'label' in data_dict:
+            n.label = data_dict['label']
+        if 'types' in data_dict:
+            n.types = data_dict['types']
+        if 'taxa' in data_dict:
+            n.taxa = data_dict['taxa']
+        if return_synonyms and 'synonyms' in node:
+            n.synonyms = node['synonyms']
+        return n
+
+
+
 @dataclass
 class TranslatorEdge:
     """
@@ -46,7 +99,11 @@ class TranslatorEdge:
     "The subject is a CURIE id for a node."
 
     object: str
-    "The object is a CURIE id for a node."
+    "The obj (object) is a CURIE id for a node."
 
     predicate: str
     "Predicates"
+
+    sources: list | None = None
+
+    attributes: list[TranslatorAttribute] | None = None

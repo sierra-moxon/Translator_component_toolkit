@@ -22,6 +22,7 @@ def status():
 
 def get_normalized_nodes(query: str | list[str],
         return_equivalent_identifiers:bool=False,
+        mode:str='get',
         **kwargs):
     """
     A wrapper around the `get_normalized_nodes` api endpoint. Given a CURIE or a list of CURIEs, this returns either a single TranslatorNode or a dict of CURIE ids to TranslatorNodes.
@@ -32,8 +33,10 @@ def get_normalized_nodes(query: str | list[str],
         Query CURIE
     return_equivalent_identifiers : bool
         Whether or not to return a list of equivalent identifiers along with the TranslatorNode. Default: False
+    mode: str
+        'get' or 'post'. Default: 'get'
     **kwargs
-        Other arguments to `get_normalized_nodes` (e.g. `conflate` for gene-protein conflation, `drug_chemical_conflate` for drug-chemical conflation)
+        Other arguments to `get_normalized_nodes` (e.g. `conflate` for gene-protein conflation, `drug_chemical_conflate` for drug-chemical conflation - see https://nodenorm.transltr.io/docs#/default/get_normalized_node_handler_get_normalized_nodes_get)
 
     Returns
     -------
@@ -48,7 +51,10 @@ def get_normalized_nodes(query: str | list[str],
     """
     path = urllib.parse.urljoin(URL, 'get_normalized_nodes')
     # default parameters: true for gene-protein conflation, false for drug-chemical conflation
-    response = requests.get(path, params={'curie': query, **kwargs})
+    if mode == 'post':
+        response = requests.post(path, json={'curies': query, **kwargs})
+    else:
+        response = requests.get(path, params={'curie': query, **kwargs})
     if response.status_code == 200:
         result = response.json()
         normalized_dict = {}
@@ -58,7 +64,9 @@ def get_normalized_nodes(query: str | list[str],
                 normalized_dict[k] = None
                 continue
 
-            n = TranslatorNode(node['id']['identifier'])
+            if node is None:
+                    normalized_dict[k] = None
+                    continuen = TranslatorNode(node['id']['identifier'])
             if 'label' in node['id']:
                 n.label = node['id']['label']
             if 'type' in node:
@@ -80,6 +88,44 @@ def get_normalized_nodes(query: str | list[str],
         return normalized_dict
     else:
         raise requests.RequestException('Response from server had error, code ' + str(response.status_code))
+
+
+def get_preferred_names(id_list:list[str], batch_limit=500, **kwargs) -> dict[str, str]:
+    """
+    Converts a list of CURIEs to their preferred names using NodeNorm. This calls get_normalized_nodes.
+
+    Parameters
+    ----------
+    query : list
+        Query CURIE
+    batch_limit: int
+        Limit for how many IDs to use in one query. Default: 500
+    **kwargs
+        Other arguments to `get_normalized_nodes` (e.g. `conflate` for gene-protein conflation, `drug_chemical_conflate` for drug-chemical conflation - see https://nodenorm.transltr.io/docs#/default/get_normalized_node_handler_get_normalized_nodes_get)
+
+    Returns
+    -------
+    Returns a dict mapping CURIE ids to preferred names.
+    """
+    name_map = {}
+    unmapped_ids = []
+    for index in range(0, len(id_list), batch_limit):
+        id_sublist = id_list[index:index + batch_limit]
+        normalized_nodes = get_normalized_nodes(id_sublist, mode='post', **kwargs)
+        for curie in id_sublist:
+            if curie not in normalized_nodes or normalized_nodes[curie] is None:
+                unmapped_ids.append(curie)
+                name_map[curie] = curie
+            else:
+                label = normalized_nodes[curie].label
+                if label is None:
+                    print(curie + ": no preferred name")
+                    label = curie
+                name_map[curie] = label
+    if len(unmapped_ids) > 0:
+        print("NodeNorm does not know about these identifiers: " + ",".join(unmapped_ids))
+    return name_map
+
 
 def ID_convert_to_preferred_name_nodeNormalizer(id_list):
     '''

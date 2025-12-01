@@ -61,6 +61,9 @@ pip install -e .
 #### KG overview
 Explore different KGs **[KG overview](https://github.com/gloriachin/Translator_component_toolkit/tree/main/notebooks/overview_of_KGs.ipynb)**
 
+#### Name Resolver and Node Normalizer
+Example notebook for **[Name Resolver and Node Normalizer](https://github.com/gloriachin/Translator_component_toolkit/tree/main/notebooks/name_resolver_lookup.ipynb)**
+
 #### Neighborhood finder
 Example notebook for **[NeighborhoodFinder](https://github.com/gloriachin/Translator_component_toolkit/tree/main/notebooks/Neighborhood_finder.ipynb)**
 
