@@ -83,8 +83,8 @@ class TranslatorNode:
             n.types = data_dict['types']
         if 'taxa' in data_dict:
             n.taxa = data_dict['taxa']
-        if return_synonyms and 'synonyms' in node:
-            n.synonyms = node['synonyms']
+        if return_synonyms and 'synonyms' in data_dict:
+            n.synonyms = data_dict['synonyms']
         return n
 
 

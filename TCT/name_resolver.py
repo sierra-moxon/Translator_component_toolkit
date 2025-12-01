@@ -84,7 +84,7 @@ def lookup(query: str, return_top_response:bool=True, return_synonyms:bool=False
 
 def synonyms(query: str, **kwargs):
     """
-    A wrapper around the `synonyms` api endpoint. Given a query string, this returns a dict of CURIE id : TranslatorNode for all synonyms for the given query.
+    A wrapper around the `synonyms` api endpoint. Given a list of CURIEs, this returns a dict of CURIE id : TranslatorNode for all synonyms for the given query.
 
     Parameters
     ----------
@@ -107,8 +107,17 @@ def synonyms(query: str, **kwargs):
         else:
             all_nodes = {}
             for k, node in result.items():
-                n = TranslatorNode.from_dict(node, return_synonyms)
-                all_nodes[k] = n
+                if not node:
+                    # If node is empty or None.
+                    all_nodes[k] = None
+                else:
+                    # NameRes calls the synonyms "names".
+                    node['synonyms'] = node['names']
+
+                    # Add the Biolink prefix to types.
+                    node['types'] = list(map(lambda ty: f"biolink:{ty}", node['types']))
+
+                    all_nodes[k] = TranslatorNode.from_dict(node, return_synonyms=True)
             return all_nodes
     else:
         raise requests.RequestException('Response from server had error, code ' + str(response.status_code) + ' ' + str(response))

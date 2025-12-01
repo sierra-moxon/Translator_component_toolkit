@@ -55,8 +55,9 @@ def test_nameres_incorrect():
     with pytest.raises(LookupError):
         TCT.name_resolver.lookup("supercalifragilisticexpialidocious")
 
-    with pytest.raises(LookupError):
-        TCT.name_resolver.synonyms("MONDO:0000000")
+    assert TCT.name_resolver.synonyms("MONDO:0000000") == {
+        'MONDO:0000000': None,
+    }
 
 
 def test_nameres_batch_search():
@@ -114,6 +115,7 @@ def test_nameres_synonyms(example_search):
         results = TCT.name_resolver.synonyms(curie)
         assert curie in results
         node = results[curie]
+        assert node is not None
         assert isinstance(node, TCT.translator_node.TranslatorNode)
 
         synonyms_lower = [synonym.lower() for synonym in node.synonyms]
