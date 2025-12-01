@@ -61,17 +61,7 @@ def lookup(query: str, return_top_response:bool=True, return_synonyms:bool=False
             raise LookupError('No matching CURIE found for the given string ' + query)
         else:
             if return_top_response:
-                node = result[0]
-                n = TranslatorNode(node['curie'])
-                if 'label' in node:
-                    n.label = node['label']
-                if 'types' in node:
-                    n.types = node['types']
-                if 'taxa' in node:
-                    n.taxa = node['taxa']
-                if return_synonyms and 'synonyms' in node:
-                    n.synonyms = node['synonyms']
-                return n
+                return TranslatorNode.from_dict(result[0], return_synonyms)
             else:
                 all_nodes = []
                 for node in result:
