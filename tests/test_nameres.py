@@ -101,6 +101,10 @@ def test_nameres_search(example_search):
         assert len(result_to_check.types) > 0
         assert result_to_check.types[0] == expect_result['biolink_type']
 
+    # Make sure the top result is what we expect.
+    result = TCT.name_resolver.lookup(example_search['query'], return_top_response=True)
+    assert result.curie == example_search['expect_results'][0]['curie']
+
 
 @pytest.mark.parametrize("example_search", EXAMPLE_SEARCHES)
 def test_nameres_synonyms(example_search):
