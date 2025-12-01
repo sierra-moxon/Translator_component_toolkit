@@ -6,21 +6,25 @@ EXAMPLE_QUERIES = [
     {
         'query': 'MESH:D003924',
         'curie': 'MONDO:0005148',
+        'label': 'type 2 diabetes mellitus',
         'biolink_type': 'biolink:Disease',
     },
     {
         'query': 'UMLS:C0004096',
         'curie': 'MONDO:0004979',
+        'label': 'Asthma',
         'biolink_type': 'biolink:Disease',
     },
     {
         'query': 'UNII:S6002H6J9F',
         'curie': 'CHEBI:32635',
+        'label': 'paracetamol sulfate',
         'biolink_type': 'biolink:SmallMolecule',
     },
     {
         'query': 'DRUGBANK:DB00083',
         'curie': 'UMLS:C0006050',
+        'label': 'Botulinum toxin type A',
         'biolink_type': 'biolink:Protein',
     }
 ]
@@ -59,3 +63,14 @@ def test_nodenorm_normalization(example_normalization):
 
     assert result.curie == example_normalization['curie']
     assert result.types[0] == example_normalization['biolink_type']
+
+def test_nodenorm_to_preferred_names():
+    """
+    Test that NodeNorm can return preferred names for normalized nodes.
+    """
+
+    queries = list(map(lambda example: example['query'], EXAMPLE_QUERIES))
+    result = TCT.node_normalizer.ID_convert_to_preferred_name_nodeNormalizer(queries)
+
+    for curie in result:
+        assert result[curie] == EXAMPLE_QUERIES[queries.index(curie)]['label']
