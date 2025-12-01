@@ -64,9 +64,7 @@ def get_normalized_nodes(query: str | list[str],
                 normalized_dict[k] = None
                 continue
 
-            if node is None:
-                    normalized_dict[k] = None
-                    continuen = TranslatorNode(node['id']['identifier'])
+            n = TranslatorNode(node['id']['identifier'])
             if 'label' in node['id']:
                 n.label = node['id']['label']
             if 'type' in node:
