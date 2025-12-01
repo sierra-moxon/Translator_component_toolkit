@@ -51,31 +51,33 @@ def get_normalized_nodes(query: str | list[str],
     response = requests.get(path, params={'curie': query, **kwargs})
     if response.status_code == 200:
         result = response.json()
-        if len(result) == 0:
-            raise LookupError('No matches found for the given input: ' + str(query))
-        else:
-            normalized_dict = {}
-            for k, node in result.items():
-                n = TranslatorNode(node['id']['identifier'])
-                if 'label' in node['id']:
-                    n.label = node['id']['label']
-                if 'type' in node:
-                    n.types = node['type']
-                if return_equivalent_identifiers and 'equivalent_identifiers' in node:
-                    synonyms = []
-                    curie_synonyms = []
-                    for eq in node['equivalent_identifiers']:
-                        if 'label' in eq:
-                            synonyms.append(eq['label'])
-                        else:
-                            synonyms.append(None)
-                        curie_synonyms.append(eq['identifier'])
-                    n.synonyms = synonyms
-                    n.curie_synonyms = curie_synonyms
-                normalized_dict[k] = n
-            if isinstance(query, str):
-                return normalized_dict[query]
-            return normalized_dict
+        normalized_dict = {}
+        for k, node in result.items():
+            if node is None:
+                # No match found for CURIE `k`.
+                normalized_dict[k] = None
+                continue
+
+            n = TranslatorNode(node['id']['identifier'])
+            if 'label' in node['id']:
+                n.label = node['id']['label']
+            if 'type' in node:
+                n.types = node['type']
+            if return_equivalent_identifiers and 'equivalent_identifiers' in node:
+                synonyms = []
+                curie_synonyms = []
+                for eq in node['equivalent_identifiers']:
+                    if 'label' in eq:
+                        synonyms.append(eq['label'])
+                    else:
+                        synonyms.append(None)
+                    curie_synonyms.append(eq['identifier'])
+                n.synonyms = synonyms
+                n.curie_synonyms = curie_synonyms
+            normalized_dict[k] = n
+        if isinstance(query, str):
+            return normalized_dict[query]
+        return normalized_dict
     else:
         raise requests.RequestException('Response from server had error, code ' + str(response.status_code))
 
