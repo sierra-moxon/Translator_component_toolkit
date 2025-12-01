@@ -101,12 +101,6 @@ def synonyms(query: str, **kwargs):
                     # If node is empty or None.
                     all_nodes[k] = None
                 else:
-                    # NameRes calls the synonyms "names".
-                    node['synonyms'] = node['names']
-
-                    # Add the Biolink prefix to types.
-                    node['types'] = list(map(lambda ty: f"biolink:{ty}", node['types']))
-
                     all_nodes[k] = TranslatorNode.from_dict(node, return_synonyms=True)
             return all_nodes
     else:
