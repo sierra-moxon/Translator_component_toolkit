@@ -55,6 +55,30 @@ def test_nameres_incorrect():
     with pytest.raises(LookupError):
         TCT.name_resolver.lookup("supercalifragilisticexpialidocious")
 
+    with pytest.raises(LookupError):
+        TCT.name_resolver.synonyms("MONDO:0000000")
+
+
+def test_nameres_batch_search():
+    """
+    Test that NameRes can process a batch result.
+    """
+
+    queries = list(map(lambda example: example['query'], EXAMPLE_SEARCHES))
+    results = TCT.name_resolver.batch_lookup(queries, return_top_response=True, return_synonyms=True)
+
+    for example_search in EXAMPLE_SEARCHES:
+        query = example_search['query']
+        assert query in results
+        node = results[query]
+        assert isinstance(node, TCT.translator_node.TranslatorNode)
+
+        expected_result = example_search['expect_results'][0]
+        assert node.curie == expected_result['curie']
+        assert node.types[0] == expected_result['biolink_type']
+        assert len(node.synonyms) > 0
+
+
 @pytest.mark.parametrize("example_search", EXAMPLE_SEARCHES)
 def test_nameres_search(example_search):
     """
@@ -75,10 +99,6 @@ def test_nameres_search(example_search):
         result_to_check = results_by_curie[expect_result['curie']]
         assert len(result_to_check.types) > 0
         assert result_to_check.types[0] == expect_result['biolink_type']
-
-    # Check if the top response is the one we expect.
-    result = TCT.name_resolver.lookup(example_search['query'], return_top_response=True)
-    assert result.curie == example_search['expect_results'][0]['curie']
 
 
 @pytest.mark.parametrize("example_search", EXAMPLE_SEARCHES)
