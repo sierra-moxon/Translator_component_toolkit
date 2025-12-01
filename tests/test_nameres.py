@@ -14,6 +14,16 @@ def test_nameres_status():
     assert status['numDocs'] > 425_000_000
 
 
+def test_nameres_incorrect():
+    """
+    Test that NameRes returns no results for an incorrect query.
+    """
+    with pytest.raises(LookupError):
+        TCT.name_resolver.lookup("")
+
+    with pytest.raises(LookupError):
+        TCT.name_resolver.lookup("supercalifragilisticexpialidocious")
+
 @pytest.mark.parametrize("example_search", [
     {
         'query': 'diabetes type 2',
