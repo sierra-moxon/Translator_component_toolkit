@@ -52,7 +52,7 @@ def get_normalized_nodes(query: str | list[str],
     path = urllib.parse.urljoin(URL, 'get_normalized_nodes')
     # default parameters: true for gene-protein conflation, false for drug-chemical conflation
     if mode == 'post':
-        response = requests.post(path, json={'curies': query, **kwargs})
+        response = requests.post(path, json={'curies': [query], **kwargs})
     else:
         response = requests.get(path, params={'curie': query, **kwargs})
     if response.status_code == 200:

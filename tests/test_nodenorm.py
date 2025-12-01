@@ -59,7 +59,7 @@ def test_nodenorm_normalization(example_normalization):
     Test some NodeNorm normalization with expected results.
     """
 
-    result = TCT.node_normalizer.get_normalized_nodes(example_normalization['query'], return_equivalent_identifiers=True)
+    result = TCT.node_normalizer.get_normalized_nodes(example_normalization['query'], return_equivalent_identifiers=True, mode='post')
 
     assert result.curie == example_normalization['curie']
     assert result.types[0] == example_normalization['biolink_type']
