@@ -55,6 +55,22 @@ EXAMPLE_QUERIES = [
         'drug_chemical_conflate': True,
         'conflate': True,
     },
+    {
+        'query': 'CHEBI:33813',
+        'curie': 'CHEBI:33813',
+        'label': '((18)O)water',
+        'biolink_type': 'biolink:SmallMolecule',
+        'drug_chemical_conflate': False,
+        'conflate': True,
+    },
+    {
+        'query': 'CHEBI:33813',
+        'curie': 'CHEBI:15377',
+        'label': 'Water',
+        'biolink_type': 'biolink:SmallMolecule',
+        'drug_chemical_conflate': True,
+        'conflate': True,
+    }
 ]
 
 def test_nodenorm_status():
@@ -112,8 +128,8 @@ def test_nodenorm_to_preferred_names():
         assert result[curie] == label
 
     result = TCT.node_normalizer.get_preferred_names(queries, drug_chemical_conflate=True, conflate=True)
-    # This means we can't search for anything with conflate == False.
-    filtered_expected_results = list(filter(lambda example: example['conflate'] == True, EXAMPLE_QUERIES))
+    # This means we can't search for anything that doesn't have both conflate == True and drug_chemical_conflate == True.
+    filtered_expected_results = list(filter(lambda example: example['conflate'] and example['drug_chemical_conflate'], EXAMPLE_QUERIES))
     assert len(result) == len(filtered_expected_results)
     for filtered_expected_result in filtered_expected_results:
         query = filtered_expected_result['query']
