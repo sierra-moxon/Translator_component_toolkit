@@ -50,18 +50,17 @@ def lookup_curies(curies: list[str], **kwargs):
     """
     path = urllib.parse.urljoin(URL, 'curie')
     response = requests.post(path, json={'ids': curies, **kwargs})
-    if response.status_code == 200:
-        result = response.json()
-        if len(result) == 0:
-            raise LookupError('No matching CURIE found for the given string ' + curies)
+    response.raise_for_status()
 
-        results = response.json()
+    result = response.json()
+    if len(result) == 0:
+        raise LookupError('No matching CURIE found for the given string ' + curies)
 
-        for curie in results:
-            # NodeAnnotator sometimes return a list of a single item. If so, we can unwrap it here.
-            if len(results[curie]) == 1:
-                results[curie] = results[curie][0]
+    results = response.json()
 
-        return results
-    else:
-        raise requests.RequestException('Response from server had error, code ' + str(response.status_code) + ' ' + str(response))
+    for curie in results:
+        # NodeAnnotator sometimes return a list of a single item. If so, we can unwrap it here.
+        if len(results[curie]) == 1:
+            results[curie] = results[curie][0]
+
+    return results
