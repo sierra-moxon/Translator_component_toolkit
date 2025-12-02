@@ -55,7 +55,13 @@ def lookup_curies(curies: list[str], **kwargs):
         if len(result) == 0:
             raise LookupError('No matching CURIE found for the given string ' + curies)
 
-        result = response.json()
-        return result
+        results = response.json()
+
+        for curie in results:
+            # NodeAnnotator sometimes return a list of a single item. If so, we can unwrap it here.
+            if len(results[curie]) == 1:
+                results[curie] = results[curie][0]
+
+        return results
     else:
         raise requests.RequestException('Response from server had error, code ' + str(response.status_code) + ' ' + str(response))

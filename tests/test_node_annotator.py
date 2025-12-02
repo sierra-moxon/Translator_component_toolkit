@@ -61,25 +61,20 @@ CURIES_with_annotations = [
     }
 ]
 
+def compare_result_with_expected(result, expected_result):
+    """
+    Compares the actual result with the expected result across multiple fields and
+    verifies whether the actual result meets the expected outcome. This comparison
+    is based on key-value pairs within the provided dictionaries, and specific
+    checks include top-level, subsection, and field-level verification.
 
-def test_status():
-    result = TCT.node_annotator.status()
-    assert result['success']
+    :param result: The actual result to compare, structured as a dictionary.
+    :param expected_result: The expected result to validate against, structured
+        as a dictionary containing various fields and their expected values.
+    :return: None
+    """
 
-
-@pytest.mark.parametrize("curie_with_annotations", CURIES_with_annotations)
-def test_curie(curie_with_annotations):
-    curie = curie_with_annotations['curie']
-    result = TCT.node_annotator.lookup_curie(curie)
-    if result == {} and curie_with_annotations['expected'] == {}:
-        # We expected no annotations and got no annotations.
-        pytest.skip(f"No annotations found for CURIE '{curie}'")
-
-    # Did we get more than one result?
-    assert len(result) == 1
-    result = result[0]
-    expected_result = curie_with_annotations['expected']
-
+    # If there is no expected result, assert that the result is empty so we can fill in the test.
     if expected_result == {}:
         assert result == {}
 
@@ -110,3 +105,40 @@ def test_curie(curie_with_annotations):
 
     if 'chembl.availability_type' in expected_result:
         assert result['chembl']['availability_type'] == expected_result['chembl.availability_type']
+
+
+def test_status():
+    """ Test that the status function returns a success message. """
+    result = TCT.node_annotator.status()
+    assert result['success']
+
+
+def test_lookup_curies():
+    curies = list(map(lambda x: x['curie'], CURIES_with_annotations))
+    results = TCT.node_annotator.lookup_curies(curies)
+    assert len(results) == len(curies)
+    for curie in curies:
+        assert curie in results
+        if isinstance(results[curie], list):
+            raise RuntimeError(f"Multiple results found for CURIE '{curie}': {results[curie]}")
+
+        actual_result = results[curie]
+        expected_result = list(filter(lambda x: x['curie'] == curie, CURIES_with_annotations))[0]['expected']
+
+        compare_result_with_expected(actual_result, expected_result)
+
+
+@pytest.mark.parametrize("curie_with_annotations", CURIES_with_annotations)
+def test_lookup_curie(curie_with_annotations):
+    curie = curie_with_annotations['curie']
+    result = TCT.node_annotator.lookup_curie(curie)
+    if result == {} and curie_with_annotations['expected'] == {}:
+        # We expected no annotations and got no annotations.
+        pytest.skip(f"No annotations found for CURIE '{curie}'")
+
+    # Did we get more than one result?
+    if isinstance(result, list):
+        raise RuntimeError(f"Multiple results found for CURIE '{curie}': {result}")
+
+    # Compare the result with the expected annotations.
+    compare_result_with_expected(result, curie_with_annotations['expected'])
