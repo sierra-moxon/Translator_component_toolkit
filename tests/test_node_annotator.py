@@ -44,6 +44,7 @@ CURIES_with_annotations = [
             'query': '1756',
             'taxid': 9606,
             'name': 'dystrophin',
+            'symbol': 'DMD',
             'type_of_gene': 'protein-coding',
             'sections': ['go', 'interpro'],
         },
