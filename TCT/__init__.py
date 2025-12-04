@@ -3,4 +3,4 @@ from .TCT import *
 
 from .translator_node import TranslatorNode as TranslatorNode
 
-from . import name_resolver as name_resolver, node_normalizer as node_normalizer, trapi as trapi, translator_kpinfo as translator_kpinfo
+from . import name_resolver as name_resolver, node_normalizer as node_normalizer, node_annotator as node_annotator, trapi as trapi, translator_kpinfo as translator_kpinfo
