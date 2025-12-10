@@ -80,11 +80,16 @@ class TranslatorNode:
         if 'label' in data_dict:
             n.label = data_dict['label']
         if 'types' in data_dict:
-            n.types = data_dict['types']
+            # Do the types have the `biolink:` prefix? If not, add them.
+            n.types = list(map(lambda ty: f"biolink:{ty}" if not ty.startswith('biolink:') else ty, data_dict['types']))
         if 'taxa' in data_dict:
             n.taxa = data_dict['taxa']
-        if return_synonyms and 'synonyms' in node:
-            n.synonyms = node['synonyms']
+        if return_synonyms:
+            if 'synonyms' in data_dict:
+                n.synonyms = data_dict['synonyms']
+            elif 'names' in data_dict:
+                # NameRes refers to synonyms as "names".
+                n.synonyms = data_dict['names']
         return n
 
 

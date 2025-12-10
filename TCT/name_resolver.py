@@ -12,10 +12,18 @@ from .translator_node import TranslatorNode
 URL = 'https://name-lookup.ci.transltr.io/'
 """This is the root URL for the API."""
 
-
-def lookup(query: str, return_top_response:bool=True, return_synonyms:bool=False, **kwargs):
+def status():
     """
-    A wrapper around the `lookup` api endpoint. Given a query string, this returns a TranslatorNode object or a list of TranslatorNode objects corresponding to the given name. 
+    Returns the status of the Name Resolver API.
+    """
+    response = requests.get(URL + 'status')
+    response.raise_for_status()
+    return response.json()
+
+
+def lookup(query: str, return_top_response:bool=True, return_synonyms:bool=False, limit:int=10, **kwargs):
+    """
+    A wrapper around the `lookup` api endpoint. Given a query string, this returns a TranslatorNode object or a list of TranslatorNode objects corresponding to the given name.
 
     Parameters
     ----------
@@ -25,6 +33,8 @@ def lookup(query: str, return_top_response:bool=True, return_synonyms:bool=False
         If true, this returns only the top response. If false, this returns a list of all responses. Default: True
     return_synonyms : bool
         If true, the resulting TranslatorNode objects contain a list of synonyms. If false, they do not include synonyms. Default: False
+    limit : int
+        The number of results to return.
     **kwargs
         Other arguments to `lookup`. Some possible arguments: `limit=20` would limit the results to 20. `autocomplete=True` indicates that the query string can be incomplete. `biolink_type="biolink:Disease"` indicates that all returned results should be diseases. `only_taxa='NCBITaxon:9606` indicates that only Homo sapiens results should be returned. For more examples, see [this](https://name-lookup.ci.transltr.io/docs#/lookup/lookup_curies_get_lookup_get).
 
@@ -44,24 +54,14 @@ def lookup(query: str, return_top_response:bool=True, return_synonyms:bool=False
     # set autocomplete to be false by default
     if 'autocomplete' not in kwargs:
         kwargs['autocomplete'] = False
-    response = requests.get(path, params={'string': query, **kwargs})
+    response = requests.get(path, params={'string': query, 'limit': limit, **kwargs})
     if response.status_code == 200:
         result = response.json()
         if len(result) == 0:
             raise LookupError('No matching CURIE found for the given string ' + query)
         else:
             if return_top_response:
-                node = result[0]
-                n = TranslatorNode(node['curie'])
-                if 'label' in node:
-                    n.label = node['label']
-                if 'types' in node:
-                    n.types = node['types']
-                if 'taxa' in node:
-                    n.taxa = node['taxa']
-                if return_synonyms and 'synonyms' in node:
-                    n.synonyms = node['synonyms']
-                return n
+                return TranslatorNode.from_dict(result[0], return_synonyms)
             else:
                 all_nodes = []
                 for node in result:
@@ -74,7 +74,7 @@ def lookup(query: str, return_top_response:bool=True, return_synonyms:bool=False
 
 def synonyms(query: str, **kwargs):
     """
-    A wrapper around the `synonyms` api endpoint. Given a query string, this returns a dict of CURIE id : TranslatorNode for all synonyms for the given query. 
+    A wrapper around the `synonyms` api endpoint. Given a list of CURIEs, this returns a dict of CURIE id : TranslatorNode for all synonyms for the given query.
 
     Parameters
     ----------
@@ -97,8 +97,11 @@ def synonyms(query: str, **kwargs):
         else:
             all_nodes = {}
             for k, node in result.items():
-                n = TranslatorNode.from_dict(node, return_synonyms)
-                all_nodes[k] = n
+                if not node:
+                    # If node is empty or None.
+                    all_nodes[k] = None
+                else:
+                    all_nodes[k] = TranslatorNode.from_dict(node, return_synonyms=True)
             return all_nodes
     else:
         raise requests.RequestException('Response from server had error, code ' + str(response.status_code) + ' ' + str(response))
@@ -114,7 +117,7 @@ def chunk_list(data:list, size:int):
 
 def batch_lookup(strings:list[str], size: int=25, return_top_response:bool=True, return_synonyms:bool=False, **kwargs) -> dict:
     """
-    A wrapper around the `bulk-lookup` api endpoint. Given a list of query strings, this returns a TranslatorNode object or a list of TranslatorNode objects corresponding to the given name. 
+    A wrapper around the `bulk-lookup` api endpoint. Given a list of query strings, this returns a TranslatorNode object or a list of TranslatorNode objects corresponding to the given name.
 
     Parameters
     ----------
@@ -156,7 +159,7 @@ def batch_lookup(strings:list[str], size: int=25, return_top_response:bool=True,
                 for s in chunk:
                     nodes = result.get(s, [])
                     translator_nodes = []
-                    for node in nodes: 
+                    for node in nodes:
                         n = TranslatorNode.from_dict(node, return_synonyms)
                         translator_nodes.append(n)
                     if return_top_response:
