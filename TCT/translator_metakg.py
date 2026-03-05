@@ -121,7 +121,7 @@ def add_new_API_for_query(APInames:dict[str, str], metaKG:pd.DataFrame, newAPIna
     return APInames, metaKG
 
 
-def add_plover_API(APInames:dict[str, str], metaKG:pd.DataFrame):
+def add_plover_API(APInames:dict[str, str], metaKG:pd.DataFrame) -> tuple[dict[str, str], pd.DataFrame]:
     '''
     This function is used to add the Plover APIs developed by the CATRAX team to the APInames and metaKG.
 
@@ -134,6 +134,8 @@ def add_plover_API(APInames:dict[str, str], metaKG:pd.DataFrame):
     Microbiome, 
     and RTX KG2.
 
+    If an API endpoint is not available (i.e. returns a non-200 return code), then the API will not be included.
+
     Parameters
     ----------
     APInames : dict
@@ -142,9 +144,6 @@ def add_plover_API(APInames:dict[str, str], metaKG:pd.DataFrame):
     metaKG : pandas.DataFrame
         This is the output of `get_kp_metadata`.
 
-
-
-
     Examples
     --------
     >>> APInames, metaKG = add_plover_API(APInames, metaKG)
@@ -152,48 +151,71 @@ def add_plover_API(APInames:dict[str, str], metaKG:pd.DataFrame):
     import requests
     url = 'https://multiomics.rtx.ai:9990/BigGIM_DrugResponse_PerformancePhase/meta_knowledge_graph'
     response = requests.get(url)
-    data = response.json()
-    for i in range(len(data["edges"])):
-        APInames, metaKG = add_new_API_for_query(APInames, metaKG, "CATRAX BigGIM DrugResponse Performance Phase KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/BigGIM_DrugResponse_PerformancePhase/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
+    if response.status_code == 200:
+        data = response.json()
+        for i in range(len(data["edges"])):
+            APInames, metaKG = add_new_API_for_query(APInames, metaKG, "CATRAX BigGIM DrugResponse Performance Phase KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/BigGIM_DrugResponse_PerformancePhase/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
+    else:
+        print(f'Warning: {url} not available')
 
     url = 'https://multiomics.rtx.ai:9990/PharmacogenomicsKG/meta_knowledge_graph'
     response = requests.get(url)
-    data = response.json()
-    for i in range(len(data["edges"])):
-        APInames, metaKG = add_new_API_for_query(APInames, metaKG, "CATRAX Pharmacogenomics KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/PharmacogenomicsKG/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
+    if response.status_code == 200:
+        data = response.json()
+        for i in range(len(data["edges"])):
+            APInames, metaKG = add_new_API_for_query(APInames, metaKG, "CATRAX Pharmacogenomics KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/PharmacogenomicsKG/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
+    else:
+        print(f'Warning: {url} not available')
 
     url = 'https://multiomics.rtx.ai:9990/ctkp/meta_knowledge_graph'
     response = requests.get(url)
-    data = response.json()
-    for i in range(len(data["edges"])):
-        APInames, metaKG = add_new_API_for_query(APInames, metaKG, "Clinical Trials KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/ctkp/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
+    if response.status_code == 200:
+        data = response.json()
+        for i in range(len(data["edges"])):
+            APInames, metaKG = add_new_API_for_query(APInames, metaKG, "Clinical Trials KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/ctkp/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
+    else:
+        print(f'Warning: {url} not available')
 
     url = 'https://multiomics.rtx.ai:9990/dakp/meta_knowledge_graph'
     response = requests.get(url)
-    data = response.json()
-    for i in range(len(data["edges"])):
-        APInames, metaKG = add_new_API_for_query(APInames, metaKG, "Drug Approvals KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/dakp/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
+    if response.status_code == 200:
+        data = response.json()
+        for i in range(len(data["edges"])):
+            APInames, metaKG = add_new_API_for_query(APInames, metaKG, "Drug Approvals KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/dakp/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
+    else:
+        print(f'Warning: {url} not available')
 
     url = 'https://multiomics.rtx.ai:9990/mokp/meta_knowledge_graph'
     response = requests.get(url)
-    data = response.json()
-    for i in range(len(data["edges"])):
-        APInames, metaKG = add_new_API_for_query(APInames, metaKG, "Multiomics KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/multiomics/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
+    if response.status_code == 200:
+        data = response.json()
+        for i in range(len(data["edges"])):
+            APInames, metaKG = add_new_API_for_query(APInames, metaKG, "Multiomics KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/multiomics/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
+    else:
+        print(f'Warning: {url} not available')
 
     url = 'https://multiomics.rtx.ai:9990/mbkp/meta_knowledge_graph'
     response = requests.get(url)
-    data = response.json()
-    for i in range(len(data["edges"])):
-        APInames, metaKG = add_new_API_for_query(APInames, metaKG, "Microbiome KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/mbkp/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
-
+    if response.status_code == 200:
+        data = response.json()
+        for i in range(len(data["edges"])):
+            APInames, metaKG = add_new_API_for_query(APInames, metaKG, "Microbiome KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/mbkp/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
+    else:
+        print(f'Warning: {url} not available')
 
     url = 'https://kg2cploverdb.ci.transltr.io/meta_knowledge_graph'
     response = requests.get(url)
+    if response.status_code != 200:
+        url = 'https://kg2cplover3.rtx.ai:9990/kg2c/meta_knowledge_graph'
+        response = requests.get(url)
     data = response.json()
+    if len(data) == 0:
+        url = 'https://kg2cplover3.rtx.ai:9990/kg2c/meta_knowledge_graph'
+        response = requests.get(url)
+        data = response.json()
     for i in range(len(data["edges"])):
         APInames, metaKG = add_new_API_for_query(APInames, metaKG, "RTX KG2 - TRAPI 1.5.0", "https://kg2cploverdb.ci.transltr.io/kg2c/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
 
-    
     return APInames, metaKG
 
 def load_translator_resources():
