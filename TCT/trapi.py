@@ -111,11 +111,16 @@ def query(url:str, query:dict):
 
     Examples
     --------
-    >>> query = build_query(['NCBIGene:3845'], ['biolink:Gene'], ['biolink:physically_interacts_with'])
-    >>> response = query(url, query)
+    >>> query_dict = build_query(['NCBIGene:3845'], ['biolink:Gene'], ['biolink:physically_interacts_with'])
+    >>> response = query(url, query_dict)
     >>> print(response)
     """
-    # example: 1. get APIs, 2. get APIs that have the target object and subject types, and the target predicates. 3. build the query and run the query.
+    if isinstance(query, str):
+        raise TypeError(
+            "query must be a dict, not a JSON string. "
+            "Use build_query(...) without return_json=True, "
+            "or pass json.loads(query) instead."
+        )
     response = requests.post(url, json=query)
     if response.status_code == 200:
         # TODO
