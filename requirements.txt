@@ -10,3 +10,4 @@ ipykernel
 PyYAML
 ipywidgets
 zstandard
+igraph
