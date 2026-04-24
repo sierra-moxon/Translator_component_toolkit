@@ -17,7 +17,6 @@ def format_query_json_for_pathfinder(subject_ids, object_ids=None,
     subject_categories = ["biolink:Gene"]
     object_categories = ["biolink:Gene"]
     predicates = ["biolink:positively_correlated_with", "biolink:physically_interacts_with"]
-
     '''
     query_json_temp = {
         "message": {
@@ -61,7 +60,11 @@ def format_query_json_for_pathfinder(subject_ids, object_ids=None,
 
     return query_json_temp
 
+
 def build_query_graph(start_node_id, end_node_id, start_node_categories=None, end_node_categories=None):
+    """
+    start_node_categories and end_node_categories are lists of categories.
+    """
     q = {
             "nodes": {
                 "on": {
@@ -99,7 +102,11 @@ def build_query_graph(start_node_id, end_node_id, start_node_categories=None, en
     return q
 
 
-def parse_results_for_pathfinder(start_node_id, end_node_id, result1, result2):
+def parse_results_for_pathfinder(start_node_id:str, end_node_id:str, result1:dict, result2:dict,
+        start_node_categories=None, end_node_categories=None):
+    """
+    Converts the results of two TRAPI queries into the same general json format as the other pathfinder APIs.
+    """
     # TODO: parse results...
     # nodes
     # edges is a dict of intermediate nodes
@@ -148,7 +155,7 @@ def parse_results_for_pathfinder(start_node_id, end_node_id, result1, result2):
         all_auxiliary_graphs[f'aux_{i}_{i1}'] = keys
         i += 1
     output = {
-        'query_graph': build_query_graph(start_node_id, end_node_id),
+        'query_graph': build_query_graph(start_node_id, end_node_id, start_node_categories, end_node_categories),
         'knowledge_graph': {'nodes': {x: {} for x in connection_counts.keys()},
                             'edges': all_edges,
                            },
@@ -158,7 +165,8 @@ def parse_results_for_pathfinder(start_node_id, end_node_id, result1, result2):
     return output
 
 
-def pathfinder(input_node1_id, input_node2_id, intermediate_categories, APInames, metaKG, API_predicates):
+def pathfinder(input_node1_id:str, input_node2_id:str,
+        intermediate_categories:list, APInames, metaKG, API_predicates):
     # get categories for input nodes
     normalized_node_dict = node_normalizer.get_normalized_nodes([input_node1_id, input_node2_id])
     input_node1_info = normalized_node_dict[input_node1_id]
@@ -216,7 +224,9 @@ def pathfinder(input_node1_id, input_node2_id, intermediate_categories, APInames
     paths = merge_ranking_by_number_of_infores(result_ranked_by_primary_infores1, result_ranked_by_primary_infores2,
             plot=False)
 
-    output = parse_results_for_pathfinder(input_node1_id, input_node2_id, result1, result2)
+    output = parse_results_for_pathfinder(input_node1_id, input_node2_id, result1, result2,
+            start_node_categories=input_node1_category,
+            end_node_categories=input_node2_category)
 
     return result1, result2, output, paths
 
