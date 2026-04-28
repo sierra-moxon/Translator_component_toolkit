@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> TCT Knowledge Graph Path Visualization</title>
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f7f6;
+        }
+        h2 {
+            color: #333;
+        }
+        .controls {
+            margin-bottom: 20px;
+            background: #fff;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+        }
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        select, input[type="file"] {
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .instructions {
+            font-size: 0.9em;
+            color: #555;
+            flex-basis: 100%;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        #network-container {
+            width: 100%;
+            height: 600px;
+            border: 1px solid #ccc;
+            background-color: #ffffff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        #info-panel {
+            width: 100%;
+            max-height: 400px;
+            padding: 15px;
+            border: 1px solid #ccc;
+            background-color: #ffffff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            overflow-y: auto;
+            box-sizing: border-box;
+        }
+        .detail-row {
+            margin-bottom: 10px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .detail-title {
+            font-weight: bold;
+            color: #2c3e50;
+            text-transform: capitalize;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            margin-top: 5px;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Path Finder Result Graph</h2>
+    
+    <div class="controls">
+        <div class="control-group">
+            <label for="file-upload" style="font-weight: bold;">1. Upload JSON Result:</label>
+            <input type="file" id="file-upload" accept=".json">
+        </div>
+        <div class="control-group">
+            <label for="path-selector" style="font-weight: bold;">2. Select View:</label>
+            <span id="path-count" style="font-size:0.85em; color:#fff; background:#2B7CE9; border-radius:12px; padding:2px 9px; display:none;"></span>
+            <select id="path-selector" disabled>
+                <option value="">Load a file first...</option>
+            </select>
+        </div>
+        <div class="instructions">
+            <strong>Tip:</strong> Select an intermediate node path from the dropdown to isolate it. Drag nodes freely to rearrange the graph.
+        </div>
+    </div>
+
+    <div class="container">
+        <div id="network-container">
+            <p style="text-align: center; color: #888; margin-top: 20px;">Please upload a JSON file to view the network.</p>
+        </div>
+        <div id="info-panel">
+            <p style="color: #666; font-style: italic;">Click on an edge (line) or node (box) in the graph above to view its detailed annotations here.</p>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        // Global variables to hold the network data
+        let network = null;
+        let networkData = {
+            nodes: new vis.DataSet([]),
+            edges: new vis.DataSet([])
+        };
+        let kgNodesMaster = {};
+        let kgEdgesMaster = {};
+        let graphViews = {};
+        let queryNodeIds = new Set(); // Subject/object nodes from the query
+        let nodeLabels = {};           // curie -> human-readable label
+
+        async function resolveNodeLabels(nodeIds) {
+            if (nodeIds.length === 0) return;
+
+            // Prefer labels already present in the uploaded KG payload.
+            nodeIds.forEach(id => {
+                const nodeMeta = kgNodesMaster[id];
+                if (!nodeMeta) return;
+                if (typeof nodeMeta.name === 'string' && nodeMeta.name.trim()) {
+                    nodeLabels[id] = nodeMeta.name;
+                } else if (typeof nodeMeta.label === 'string' && nodeMeta.label.trim()) {
+                    nodeLabels[id] = nodeMeta.label;
+                }
+            });
+
+            // Resolve only those still missing labels.
+            const unresolvedIds = nodeIds.filter(id => !nodeLabels[id]);
+            if (unresolvedIds.length === 0) return;
+
+            const params = new URLSearchParams();
+            unresolvedIds.forEach(id => params.append('preferred_curies', id));
+            try {
+                const response = await fetch(
+                    `https://name-lookup.ci.transltr.io/synonyms?${params}`
+                );
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                Object.entries(data).forEach(([curie, nodeInfo]) => {
+                    if (!nodeInfo) return;
+                    if (Array.isArray(nodeInfo)) {
+                        const first = nodeInfo[0] || {};
+                        if (first.label) nodeLabels[curie] = first.label;
+                        else if (first.name) nodeLabels[curie] = first.name;
+                        return;
+                    }
+                    if (typeof nodeInfo === 'object') {
+                        if (nodeInfo.label) nodeLabels[curie] = nodeInfo.label;
+                        else if (nodeInfo.name) nodeLabels[curie] = nodeInfo.name;
+                        else if (nodeInfo.preferred_name) nodeLabels[curie] = nodeInfo.preferred_name;
+                    }
+                });
+            } catch (err) {
+                console.warn('Name resolution failed, CURIEs will be shown instead.', err);
+            }
+        }
+
+        // 1. Listen for file upload
+        document.getElementById('file-upload').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const jsonData = JSON.parse(e.target.result);
+                    await processGraphData(jsonData);
+                } catch (error) {
+                    alert('Error parsing JSON file. Please ensure it is a valid JSON format.');
+                    console.error("JSON Parsing Error:", error);
+                }
+            };
+            reader.readAsText(file);
+            // Allow selecting the same file again to trigger a reload.
+            event.target.value = '';
+        });
+
+        function initializeNetwork(container) {
+            if (network) {
+                network.destroy();
+                network = null;
+            }
+
+            const options = {
+                interaction: { hover: true, tooltipDelay: 200, dragNodes: true },
+                physics: { barnesHut: { gravitationalConstant: -3000, centralGravity: 0.3, springLength: 250 } }
+            };
+
+            network = new vis.Network(container, networkData, options);
+
+            // After initial layout, freeze all nodes so dragging one doesn't pull others
+            network.on("stabilized", function () {
+                const updates = networkData.nodes.getIds().map(id => ({ id, fixed: { x: true, y: true } }));
+                networkData.nodes.update(updates);
+                network.setOptions({ physics: { enabled: false } });
+            });
+
+            // Temporarily unfreeze the node being dragged
+            network.on("dragStart", function (params) {
+                if (params.nodes && params.nodes.length > 0) {
+                    const updates = params.nodes.map(id => ({ id, fixed: { x: false, y: false } }));
+                    networkData.nodes.update(updates);
+                }
+            });
+
+            // Re-freeze it at its new position
+            network.on("dragEnd", function (params) {
+                if (params.nodes && params.nodes.length > 0) {
+                    const updates = params.nodes.map(id => ({ id, fixed: { x: true, y: true } }));
+                    networkData.nodes.update(updates);
+                }
+            });
+
+            // Handle click events for annotations
+            network.on("click", handleNetworkClick);
+        }
+
+        // 2. Process data and build the Dropdown Views
+        async function processGraphData(graphData) {
+            const container = document.getElementById('network-container');
+            const infoPanel = document.getElementById('info-panel');
+            const pathSelector = document.getElementById('path-selector');
+            
+            // Check TRAPI vs Standard nesting formats
+            const kgData = graphData.message ? graphData.message.knowledge_graph : graphData.knowledge_graph;
+            const auxData = graphData.message ? graphData.message.auxiliary_graphs : graphData.auxiliary_graphs;
+            const qgData = graphData.message ? graphData.message.query_graph : graphData.query_graph;
+
+            // Collect query subject/object node IDs (nodes with explicit ids)
+            queryNodeIds = new Set();
+            if (qgData && qgData.nodes) {
+                Object.values(qgData.nodes).forEach(qNode => {
+                    if (qNode.ids && Array.isArray(qNode.ids)) {
+                        qNode.ids.forEach(id => queryNodeIds.add(id));
+                    }
+                });
+            }
+
+            if (!kgData || !kgData.edges) {
+                container.innerHTML = '<p style="color: red; padding: 20px;">Invalid file structure: Missing knowledge_graph.edges.</p>';
+                return;
+            }
+
+            // Clear UI
+            container.innerHTML = '<p style="text-align:center; color:#888; margin-top:20px;">Resolving node names\u2026</p>';
+            infoPanel.innerHTML = '<p style="color: #666; font-style: italic;">Click on an edge (line) or node (box) in the graph above to view its detailed annotations here.</p>';
+
+            // Resolve node labels from name-lookup API before rendering
+            kgNodesMaster = kgData.nodes || {};
+            nodeLabels = {};
+            let allNodeIds = Object.keys(kgNodesMaster);
+            if (allNodeIds.length === 0) {
+                Object.values(kgData.edges).forEach(e => {
+                    if (e.subject) allNodeIds.push(e.subject);
+                    if (e.object)  allNodeIds.push(e.object);
+                });
+            }
+            await resolveNodeLabels([...new Set(allNodeIds)]);
+
+            container.innerHTML = '';
+            kgEdgesMaster = kgData.edges;
+            graphViews = { "ALL": Object.keys(kgEdgesMaster) }; // Default view: All edges
+
+            pathSelector.innerHTML = '<option value="ALL">All Paths (Full Graph)</option>';
+
+            // 3. Extract paths/views. Use auxiliary_graphs if available, else group by intermediate nodes dynamically.
+            if (auxData && Object.keys(auxData).length > 0) {
+                Object.entries(auxData).forEach(([key, value]) => {
+                    // Extract edge IDs whether it's an array or TRAPI 1.4 object
+                    let edgeIds = Array.isArray(value) ? value : (value.edges || []);
+                    
+                    // Format the name nicely (e.g., "aux_1_NCBIGene:4297" -> "Path via NCBIGene:4297")
+                    let nodeNameMatch = key.match(/_(.+)$/); 
+                    let displayName = nodeNameMatch ? `Path via ${nodeNameMatch[1]}` : `Path: ${key}`;
+                    
+                    graphViews[key] = edgeIds;
+                    
+                    let option = document.createElement('option');
+                    option.value = key;
+                    option.textContent = displayName;
+                    pathSelector.appendChild(option);
+                });
+            } else {
+                // Fallback: Group by nodes with Degree > 1 to simulate intermediate paths
+                const nodeEdges = {};
+                Object.entries(kgEdgesMaster).forEach(([edgeId, edgeInfo]) => {
+                    if(edgeInfo.subject && edgeInfo.object) {
+                        if (!nodeEdges[edgeInfo.subject]) nodeEdges[edgeInfo.subject] = new Set();
+                        if (!nodeEdges[edgeInfo.object]) nodeEdges[edgeInfo.object] = new Set();
+                        nodeEdges[edgeInfo.subject].add(edgeId);
+                        nodeEdges[edgeInfo.object].add(edgeId);
+                    }
+                });
+
+                Object.entries(nodeEdges).forEach(([nodeId, edgeSet]) => {
+                    if (edgeSet.size > 1) { // Node acts as an intermediate hub
+                        let viewKey = `node_${nodeId}`;
+                        graphViews[viewKey] = Array.from(edgeSet);
+                        
+                        let option = document.createElement('option');
+                        option.value = viewKey;
+                        option.textContent = `Path via ${nodeId}`;
+                        pathSelector.appendChild(option);
+                    }
+                });
+            }
+
+            pathSelector.disabled = false;
+            pathSelector.value = 'ALL';
+
+            // Show path count (subtract 1 for the "ALL" entry)
+            const pathCount = Object.keys(graphViews).length - 1;
+            const countBadge = document.getElementById('path-count');
+            countBadge.textContent = pathCount + (pathCount === 1 ? ' path' : ' paths');
+            countBadge.style.display = 'inline';
+
+            initializeNetwork(container);
+
+            // Draw the default full graph
+            updateNetworkView("ALL");
+        }
+
+        // 4. Update Network when Dropdown changes
+        document.getElementById('path-selector').addEventListener('change', function(e) {
+            updateNetworkView(e.target.value);
+        });
+
+        function updateNetworkView(viewKey) {
+            const edgeIdsToShow = graphViews[viewKey] || [];
+            
+            const visEdges = [];
+            const nodeSet = new Set();
+
+            edgeIdsToShow.forEach(edgeId => {
+                const edgeInfo = kgEdgesMaster[edgeId];
+                if (edgeInfo && edgeInfo.subject && edgeInfo.object) {
+                    nodeSet.add(edgeInfo.subject);
+                    nodeSet.add(edgeInfo.object);
+
+                    let label = edgeInfo.predicate ? edgeInfo.predicate.replace('biolink:', '').replace(/_/g, ' ') : 'related to';
+
+                    visEdges.push({
+                        id: edgeId,
+                        from: edgeInfo.subject,
+                        to: edgeInfo.object,
+                        label: label,
+                        font: { align: 'middle', size: 12, background: 'rgba(255,255,255,0.8)' },
+                        arrows: 'to',
+                        color: { color: '#848484', highlight: '#2B7CE9', hover: '#2B7CE9' },
+                        raw_data: edgeInfo
+                    });
+                }
+            });
+
+            const visNodes = Array.from(nodeSet).map(nodeId => {
+                let bgColor = '#D2E5FF'; // Default blue (e.g., Genes)
+                if (nodeId.includes('PUBCHEM')) bgColor = '#FFD2D2'; // Compound (red)
+                else if (nodeId.includes('MONDO') || nodeId.includes('DOID')) bgColor = '#D2FFD2'; // Disease (green)
+
+                // Query subject/object nodes get blue
+                if (queryNodeIds.has(nodeId)) bgColor = '#4A90D9';
+
+                // Highlight intermediate node if it's currently selected in the view
+                let isTargetNode = document.getElementById('path-selector').options[document.getElementById('path-selector').selectedIndex].text.includes(nodeId);
+                if (isTargetNode) bgColor = '#FFF79A'; 
+
+                return {
+                    id: nodeId,
+                    label: nodeLabels[nodeId] || nodeId,
+                    title: nodeLabels[nodeId] ? `${nodeLabels[nodeId]}\n${nodeId}` : nodeId,
+                    shape: 'box',
+                    color: {
+                        background: bgColor,
+                        border: '#2c3e50',
+                        highlight: { background: '#FFF79A', border: '#2c3e50' }
+                    },
+                    font: { size: 14, face: 'Arial' }
+                };
+            });
+
+            networkData.nodes.clear();
+            networkData.edges.clear();
+            networkData.nodes.add(visNodes);
+            networkData.edges.add(visEdges);
+        }
+
+        // 5. Render Panel Annotations
+        function handleNetworkClick(params) {
+            const infoPanel = document.getElementById('info-panel');
+            infoPanel.innerHTML = ""; // Clear panel
+
+            if (params.edges.length > 0 && params.nodes.length === 0) {
+                const edgeId = params.edges[0];
+                const edgeData = networkData.edges.get(edgeId).raw_data;
+                const subjectName = nodeLabels[edgeData.subject] || edgeData.subject;
+                const objectName = nodeLabels[edgeData.object] || edgeData.object;
+
+                let htmlContent = `<h3>Edge Details (ID: ${edgeId})</h3>`;
+                
+                const coreKeys = ['subject', 'predicate', 'object'];
+                htmlContent += `<div class="detail-row"><span class="detail-title">Subject:</span> ${subjectName} (${edgeData.subject})</div>`;
+                htmlContent += `<div class="detail-row"><span class="detail-title">Predicate:</span> ${edgeData.predicate}</div>`;
+                htmlContent += `<div class="detail-row"><span class="detail-title">Object:</span> ${objectName} (${edgeData.object})</div>`;
+                
+                Object.keys(edgeData).forEach(key => {
+                    if (!coreKeys.includes(key)) {
+                        htmlContent += `<div class="detail-row"><span class="detail-title">${key.replace(/_/g, ' ')}:</span>`;
+                        if (typeof edgeData[key] === 'object' && edgeData[key] !== null) {
+                            htmlContent += `<pre>${JSON.stringify(edgeData[key], null, 2)}</pre>`;
+                        } else {
+                            htmlContent += ` <span>${edgeData[key]}</span>`;
+                        }
+                        htmlContent += `</div>`;
+                    }
+                });
+
+                infoPanel.innerHTML = htmlContent;
+
+            } else if (params.nodes.length > 0) {
+                const nodeId = params.nodes[0];
+                const nodeName = nodeLabels[nodeId] || nodeId;
+                infoPanel.innerHTML = `<h3>Node Details</h3><p><span class="detail-title">Name:</span> ${nodeName}</p><p><span class="detail-title">ID:</span> ${nodeId}</p><p><em>To view association details, click on the connecting lines (edges).</em></p>`;
+            } else {
+                infoPanel.innerHTML = `<p style="color: #666; font-style: italic;">Click on an edge (line) or node (box) in the graph above to view its detailed annotations here.</p>`;
+            }
+        }
+    </script>
+</body>
+</html>
