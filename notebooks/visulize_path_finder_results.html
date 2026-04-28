@@ -183,6 +183,38 @@
             });
         }
 
+        function getPrimaryKnowledgeSourceSignature(edgeInfo) {
+            const sources = new Set();
+
+            // TRAPI sources array format
+            if (Array.isArray(edgeInfo.sources)) {
+                edgeInfo.sources.forEach(src => {
+                    const role = (src.resource_role || '').toLowerCase();
+                    if (role.includes('primary') && src.resource_id) {
+                        sources.add(src.resource_id);
+                    }
+                });
+            }
+
+            // Fallback: attribute-style primary knowledge source
+            if (Array.isArray(edgeInfo.attributes)) {
+                edgeInfo.attributes.forEach(attr => {
+                    const typeId = (attr.attribute_type_id || '').toLowerCase();
+                    if (typeId.includes('primary_knowledge_source')) {
+                        if (Array.isArray(attr.value)) {
+                            attr.value.forEach(v => {
+                                if (v) sources.add(String(v));
+                            });
+                        } else if (attr.value) {
+                            sources.add(String(attr.value));
+                        }
+                    }
+                });
+            }
+
+            return sources.size > 0 ? Array.from(sources).sort().join('|') : '__NO_PRIMARY_SOURCE__';
+        }
+
         function getSelectedViewKeys() {
             const pathSelector = document.getElementById('path-selector');
             const selected = Array.from(pathSelector.selectedOptions).map(opt => opt.value).filter(Boolean);
@@ -427,17 +459,43 @@
                 nodeSet.add(edgeInfo.subject);
                 nodeSet.add(edgeInfo.object);
 
-                // Group by unordered node pair so all parallel edges get separate curves.
-                const pairKey = [edgeInfo.subject, edgeInfo.object].sort().join('||');
+                // Group by directed node pair first.
+                const pairKey = `${edgeInfo.subject}=>${edgeInfo.object}`;
                 if (!edgeGroups[pairKey]) edgeGroups[pairKey] = [];
                 edgeGroups[pairKey].push({ edgeId, edgeInfo });
             });
 
             Object.values(edgeGroups).forEach(group => {
-                const total = group.length;
-                group.forEach((item, idx) => {
-                    const { edgeId, edgeInfo } = item;
-                    const label = edgeInfo.predicate ? edgeInfo.predicate.replace('biolink:', '').replace(/_/g, ' ') : 'related to';
+                // Collapse only when predicate + primary knowledge source signature are the same.
+                const collapsedByRule = {};
+                group.forEach(item => {
+                    const predicateKey = item.edgeInfo.predicate || '__NO_PREDICATE__';
+                    const pksKey = getPrimaryKnowledgeSourceSignature(item.edgeInfo);
+                    const collapseKey = `${predicateKey}||${pksKey}`;
+                    if (!collapsedByRule[collapseKey]) collapsedByRule[collapseKey] = [];
+                    collapsedByRule[collapseKey].push(item);
+                });
+
+                const collapsedEdges = Object.values(collapsedByRule).map(items => {
+                    const representative = items[0];
+                    const rawDataList = items.map(i => i.edgeInfo);
+                    const rawEdgeIds = items.map(i => i.edgeId);
+                    return {
+                        id: rawEdgeIds.join('||'),
+                        from: representative.edgeInfo.subject,
+                        to: representative.edgeInfo.object,
+                        predicate: representative.edgeInfo.predicate,
+                        raw_data: representative.edgeInfo,
+                        raw_data_list: rawDataList,
+                        raw_edge_ids: rawEdgeIds,
+                        collapsed_count: items.length
+                    };
+                });
+
+                const total = collapsedEdges.length;
+                collapsedEdges.forEach((edge, idx) => {
+                    const labelBase = edge.predicate ? edge.predicate.replace('biolink:', '').replace(/_/g, ' ') : 'related to';
+                    const label = edge.collapsed_count > 1 ? `${labelBase} (${edge.collapsed_count})` : labelBase;
 
                     let smooth = { enabled: false };
                     let vadjust = 0;
@@ -453,15 +511,18 @@
                     }
 
                     visEdges.push({
-                        id: edgeId,
-                        from: edgeInfo.subject,
-                        to: edgeInfo.object,
+                        id: edge.id,
+                        from: edge.from,
+                        to: edge.to,
                         label,
                         font: { align: 'middle', size: 12, background: 'rgba(255,255,255,0.8)', vadjust },
                         arrows: 'to',
                         smooth,
                         color: { color: '#848484', highlight: '#2B7CE9', hover: '#2B7CE9' },
-                        raw_data: edgeInfo
+                        raw_data: edge.raw_data,
+                        raw_data_list: edge.raw_data_list,
+                        raw_edge_ids: edge.raw_edge_ids,
+                        collapsed_count: edge.collapsed_count
                     });
                 });
             });
@@ -506,11 +567,16 @@
 
             if (params.edges.length > 0 && params.nodes.length === 0) {
                 const edgeId = params.edges[0];
-                const edgeData = networkData.edges.get(edgeId).raw_data;
+                const visEdge = networkData.edges.get(edgeId);
+                const edgeData = visEdge.raw_data;
                 const subjectName = nodeLabels[edgeData.subject] || edgeData.subject;
                 const objectName = nodeLabels[edgeData.object] || edgeData.object;
 
                 let htmlContent = `<h3>Edge Details (ID: ${edgeId})</h3>`;
+                if (visEdge.collapsed_count && visEdge.collapsed_count > 1) {
+                    htmlContent += `<div class="detail-row"><span class="detail-title">Collapsed Edges:</span> ${visEdge.collapsed_count}</div>`;
+                    htmlContent += `<div class="detail-row"><span class="detail-title">Underlying Edge IDs:</span> <pre>${JSON.stringify(visEdge.raw_edge_ids || [], null, 2)}</pre></div>`;
+                }
                 
                 const coreKeys = ['subject', 'predicate', 'object'];
                 htmlContent += `<div class="detail-row"><span class="detail-title">Subject:</span> ${subjectName} (${edgeData.subject})</div>`;
