@@ -419,25 +419,51 @@
             const visEdges = [];
             const nodeSet = new Set();
 
+            const edgeGroups = {};
             edgeIdsToShow.forEach(edgeId => {
                 const edgeInfo = kgEdgesMaster[edgeId];
-                if (edgeInfo && edgeInfo.subject && edgeInfo.object) {
-                    nodeSet.add(edgeInfo.subject);
-                    nodeSet.add(edgeInfo.object);
+                if (!edgeInfo || !edgeInfo.subject || !edgeInfo.object) return;
 
-                    let label = edgeInfo.predicate ? edgeInfo.predicate.replace('biolink:', '').replace(/_/g, ' ') : 'related to';
+                nodeSet.add(edgeInfo.subject);
+                nodeSet.add(edgeInfo.object);
+
+                // Group by unordered node pair so all parallel edges get separate curves.
+                const pairKey = [edgeInfo.subject, edgeInfo.object].sort().join('||');
+                if (!edgeGroups[pairKey]) edgeGroups[pairKey] = [];
+                edgeGroups[pairKey].push({ edgeId, edgeInfo });
+            });
+
+            Object.values(edgeGroups).forEach(group => {
+                const total = group.length;
+                group.forEach((item, idx) => {
+                    const { edgeId, edgeInfo } = item;
+                    const label = edgeInfo.predicate ? edgeInfo.predicate.replace('biolink:', '').replace(/_/g, ' ') : 'related to';
+
+                    let smooth = { enabled: false };
+                    let vadjust = 0;
+                    if (total > 1) {
+                        const band = Math.floor(idx / 2) + 1;
+                        const clockwise = idx % 2 === 0;
+                        smooth = {
+                            enabled: true,
+                            type: clockwise ? 'curvedCW' : 'curvedCCW',
+                            roundness: Math.min(0.12 + band * 0.08, 0.6)
+                        };
+                        vadjust = (clockwise ? 1 : -1) * (6 + band * 4);
+                    }
 
                     visEdges.push({
                         id: edgeId,
                         from: edgeInfo.subject,
                         to: edgeInfo.object,
-                        label: label,
-                        font: { align: 'middle', size: 12, background: 'rgba(255,255,255,0.8)' },
+                        label,
+                        font: { align: 'middle', size: 12, background: 'rgba(255,255,255,0.8)', vadjust },
                         arrows: 'to',
+                        smooth,
                         color: { color: '#848484', highlight: '#2B7CE9', hover: '#2B7CE9' },
                         raw_data: edgeInfo
                     });
-                }
+                });
             });
 
             const visNodes = Array.from(nodeSet).map(nodeId => {
