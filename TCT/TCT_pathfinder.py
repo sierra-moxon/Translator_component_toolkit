@@ -1,4 +1,5 @@
 # TCT Pathfinder...
+import requests
 
 from collections import Counter
 
@@ -230,3 +231,51 @@ def pathfinder(input_node1_id:str, input_node2_id:str,
 
     return result1, result2, output, paths
 
+
+
+# define a function that uses the query_json as an template and change the ids and categories of the nodes
+def format_pathfinder_query(node1_id, node1_category, node2_id, node2_category):
+    query_json = {
+        "message": {
+            "query_graph": {
+                "nodes": {
+                    "SN": {
+                        "ids": [
+                            node1_id
+                        ],
+                        "categories": [
+                            node1_category
+                        ]
+                    },
+                    "ON": {
+                        "ids": [
+                            node2_id
+                        ],
+                        "categories": [
+                            node2_category
+                        ]
+                    }
+                },
+                "paths": {
+                    "p0": {
+                        "subject": "SN",
+                        "object": "ON"
+                    }
+                }
+            }
+        }
+    }
+    return query_json
+
+def query_aragorn_pathfinder(node1_id, node1_category, node2_id, node2_category):
+    aragorn_endpoint = 'https://shepherd.renci.org/aragorn/query'
+    query_current = format_pathfinder_query(node1_id, node1_category, node2_id, node2_category)
+    response = requests.post(aragorn_endpoint, json=query_current)
+    return response
+
+
+def query_arax_pathfinder(node1_id, node1_category, node2_id, node2_category):
+    ARAX_endpoint = 'https://arax.ci.transltr.io/api/arax/v1.4/query'
+    query_current = format_pathfinder_query(node1_id, node1_category, node2_id, node2_category)
+    response = requests.post(ARAX_endpoint, json=query_current)
+    return response

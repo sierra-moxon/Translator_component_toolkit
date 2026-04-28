@@ -97,13 +97,14 @@
         <div class="control-group">
             <label for="path-selector" style="font-weight: bold;">2. Select View:</label>
             <span id="path-count" style="font-size:0.85em; color:#fff; background:#2B7CE9; border-radius:12px; padding:2px 9px; display:none;"></span>
-            <select id="path-selector" disabled>
+            <select id="path-selector" disabled multiple size="8">
                 <option value="">Load a file first...</option>
             </select>
         </div>
         <div class="instructions">
-            <strong>Tip:</strong> Select an intermediate node path from the dropdown to isolate it. Drag nodes freely to rearrange the graph.
+            <strong>Tip:</strong> Select one path or multiple paths in the dropdown (Command/Ctrl-click for non-adjacent options). Drag nodes freely to rearrange the graph.
         </div>
+        <div id="query-summary" class="instructions" style="display:none;"></div>
     </div>
 
     <div class="container">
@@ -126,6 +127,8 @@
         let kgEdgesMaster = {};
         let graphViews = {};
         let queryNodeIds = new Set(); // Subject/object nodes from the query
+        let querySubjectIds = [];
+        let queryObjectIds = [];
         let nodeLabels = {};           // curie -> human-readable label
 
         async function resolveNodeLabels(nodeIds) {
@@ -171,6 +174,19 @@
             } catch (err) {
                 console.warn('Name resolution failed, CURIEs will be shown instead.', err);
             }
+        }
+
+        function getRenderableUniqueEdgeIds(edgeIds) {
+            return [...new Set(edgeIds)].filter(edgeId => {
+                const edgeInfo = kgEdgesMaster[edgeId];
+                return !!(edgeInfo && edgeInfo.subject && edgeInfo.object);
+            });
+        }
+
+        function getSelectedViewKeys() {
+            const pathSelector = document.getElementById('path-selector');
+            const selected = Array.from(pathSelector.selectedOptions).map(opt => opt.value).filter(Boolean);
+            return selected.length > 0 ? selected : ['ALL'];
         }
 
         // 1. Listen for file upload
@@ -238,6 +254,7 @@
             const container = document.getElementById('network-container');
             const infoPanel = document.getElementById('info-panel');
             const pathSelector = document.getElementById('path-selector');
+            const querySummary = document.getElementById('query-summary');
             
             // Check TRAPI vs Standard nesting formats
             const kgData = graphData.message ? graphData.message.knowledge_graph : graphData.knowledge_graph;
@@ -246,11 +263,39 @@
 
             // Collect query subject/object node IDs (nodes with explicit ids)
             queryNodeIds = new Set();
+            querySubjectIds = [];
+            queryObjectIds = [];
             if (qgData && qgData.nodes) {
                 Object.values(qgData.nodes).forEach(qNode => {
                     if (qNode.ids && Array.isArray(qNode.ids)) {
                         qNode.ids.forEach(id => queryNodeIds.add(id));
                     }
+                });
+
+                // Prefer explicit roles from query edges/paths when available.
+                const nodeMap = qgData.nodes || {};
+                const subjectNodeKeys = new Set();
+                const objectNodeKeys = new Set();
+                if (qgData.edges) {
+                    Object.values(qgData.edges).forEach(edge => {
+                        if (edge.subject) subjectNodeKeys.add(edge.subject);
+                        if (edge.object) objectNodeKeys.add(edge.object);
+                    });
+                }
+                if (qgData.paths) {
+                    Object.values(qgData.paths).forEach(path => {
+                        if (path.subject) subjectNodeKeys.add(path.subject);
+                        if (path.object) objectNodeKeys.add(path.object);
+                    });
+                }
+
+                subjectNodeKeys.forEach(nodeKey => {
+                    const ids = nodeMap[nodeKey] && Array.isArray(nodeMap[nodeKey].ids) ? nodeMap[nodeKey].ids : [];
+                    ids.forEach(id => querySubjectIds.push(id));
+                });
+                objectNodeKeys.forEach(nodeKey => {
+                    const ids = nodeMap[nodeKey] && Array.isArray(nodeMap[nodeKey].ids) ? nodeMap[nodeKey].ids : [];
+                    ids.forEach(id => queryObjectIds.push(id));
                 });
             }
 
@@ -273,7 +318,22 @@
                     if (e.object)  allNodeIds.push(e.object);
                 });
             }
-            await resolveNodeLabels([...new Set(allNodeIds)]);
+            allNodeIds = [...new Set([...allNodeIds, ...Array.from(queryNodeIds)])];
+            await resolveNodeLabels(allNodeIds);
+
+            // Show query endpoints using names when available.
+            const renderEntityList = (ids) => {
+                const unique = [...new Set(ids)];
+                if (unique.length === 0) return 'N/A';
+                return unique.map(id => nodeLabels[id] || id).join(', ');
+            };
+            if (querySubjectIds.length > 0 || queryObjectIds.length > 0) {
+                querySummary.innerHTML = `<strong>Query:</strong> Subject: ${renderEntityList(querySubjectIds)} | Object: ${renderEntityList(queryObjectIds)}`;
+                querySummary.style.display = 'block';
+            } else {
+                querySummary.style.display = 'none';
+                querySummary.innerHTML = '';
+            }
 
             container.innerHTML = '';
             kgEdgesMaster = kgData.edges;
@@ -286,16 +346,18 @@
                 Object.entries(auxData).forEach(([key, value]) => {
                     // Extract edge IDs whether it's an array or TRAPI 1.4 object
                     let edgeIds = Array.isArray(value) ? value : (value.edges || []);
+                    const renderableEdgeIds = getRenderableUniqueEdgeIds(edgeIds);
+                    const edgeCount = renderableEdgeIds.length;
                     
                     // Format the name nicely (e.g., "aux_1_NCBIGene:4297" -> "Path via NCBIGene:4297")
                     let nodeNameMatch = key.match(/_(.+)$/); 
                     let displayName = nodeNameMatch ? `Path via ${nodeNameMatch[1]}` : `Path: ${key}`;
                     
-                    graphViews[key] = edgeIds;
+                    graphViews[key] = renderableEdgeIds;
                     
                     let option = document.createElement('option');
                     option.value = key;
-                    option.textContent = displayName;
+                    option.textContent = `${displayName} (${edgeCount} ${edgeCount === 1 ? 'edge' : 'edges'})`;
                     pathSelector.appendChild(option);
                 });
             } else {
@@ -313,18 +375,20 @@
                 Object.entries(nodeEdges).forEach(([nodeId, edgeSet]) => {
                     if (edgeSet.size > 1) { // Node acts as an intermediate hub
                         let viewKey = `node_${nodeId}`;
-                        graphViews[viewKey] = Array.from(edgeSet);
+                        const renderableEdgeIds = getRenderableUniqueEdgeIds(Array.from(edgeSet));
+                        const edgeCount = renderableEdgeIds.length;
+                        graphViews[viewKey] = renderableEdgeIds;
                         
                         let option = document.createElement('option');
                         option.value = viewKey;
-                        option.textContent = `Path via ${nodeId}`;
+                        option.textContent = `Path via ${nodeId} (${edgeCount} ${edgeCount === 1 ? 'edge' : 'edges'})`;
                         pathSelector.appendChild(option);
                     }
                 });
             }
 
             pathSelector.disabled = false;
-            pathSelector.value = 'ALL';
+            pathSelector.options[0].selected = true;
 
             // Show path count (subtract 1 for the "ALL" entry)
             const pathCount = Object.keys(graphViews).length - 1;
@@ -335,16 +399,22 @@
             initializeNetwork(container);
 
             // Draw the default full graph
-            updateNetworkView("ALL");
+            updateNetworkView(['ALL']);
         }
 
         // 4. Update Network when Dropdown changes
-        document.getElementById('path-selector').addEventListener('change', function(e) {
-            updateNetworkView(e.target.value);
+        document.getElementById('path-selector').addEventListener('change', function() {
+            updateNetworkView(getSelectedViewKeys());
         });
 
-        function updateNetworkView(viewKey) {
-            const edgeIdsToShow = graphViews[viewKey] || [];
+        function updateNetworkView(viewKeys) {
+            const keys = Array.isArray(viewKeys) ? viewKeys : [viewKeys];
+            const combinedEdgeIds = [];
+            keys.forEach(key => {
+                const ids = graphViews[key] || [];
+                combinedEdgeIds.push(...ids);
+            });
+            const edgeIdsToShow = getRenderableUniqueEdgeIds(combinedEdgeIds);
             
             const visEdges = [];
             const nodeSet = new Set();
@@ -379,7 +449,8 @@
                 if (queryNodeIds.has(nodeId)) bgColor = '#4A90D9';
 
                 // Highlight intermediate node if it's currently selected in the view
-                let isTargetNode = document.getElementById('path-selector').options[document.getElementById('path-selector').selectedIndex].text.includes(nodeId);
+                const selectedTexts = Array.from(document.getElementById('path-selector').selectedOptions).map(opt => opt.text);
+                let isTargetNode = selectedTexts.some(text => text.includes(nodeId));
                 if (isTargetNode) bgColor = '#FFF79A'; 
 
                 return {
