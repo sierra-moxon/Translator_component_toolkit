@@ -441,6 +441,7 @@
 
         function updateNetworkView(viewKeys) {
             const keys = Array.isArray(viewKeys) ? viewKeys : [viewKeys];
+            const isSinglePathSelection = keys.length === 1 && keys[0] !== 'ALL';
             const combinedEdgeIds = [];
             keys.forEach(key => {
                 const ids = graphViews[key] || [];
@@ -544,6 +545,7 @@
                     id: nodeId,
                     label: nodeLabels[nodeId] || nodeId,
                     title: nodeLabels[nodeId] ? `${nodeLabels[nodeId]}\n${nodeId}` : nodeId,
+                    fixed: isSinglePathSelection ? { x: false, y: false } : undefined,
                     shape: 'box',
                     color: {
                         background: bgColor,
@@ -558,6 +560,21 @@
             networkData.edges.clear();
             networkData.nodes.add(visNodes);
             networkData.edges.add(visEdges);
+
+            // For a single selected path, run a fresh auto-layout and fit so nodes/edges are clearly visible.
+            if (network && isSinglePathSelection) {
+                network.setOptions({ physics: { enabled: true } });
+                network.once('stabilized', function () {
+                    network.fit({
+                        animation: { duration: 300, easingFunction: 'easeInOutQuad' }
+                    });
+                });
+                network.stabilize(200);
+            } else if (network) {
+                network.fit({
+                    animation: { duration: 250, easingFunction: 'easeInOutQuad' }
+                });
+            }
         }
 
         // 5. Render Panel Annotations
