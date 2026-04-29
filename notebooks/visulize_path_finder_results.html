@@ -13,34 +13,45 @@
         }
         h2 {
             color: #333;
+            margin-bottom: 12px;
+        }
+        .layout {
+            display: grid;
+            grid-template-columns: 1fr 4fr;
+            gap: 20px;
+            align-items: start;
         }
         .controls {
-            margin-bottom: 20px;
             background: #fff;
             padding: 15px;
             border: 1px solid #ccc;
             border-radius: 4px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.05);
             display: flex;
-            flex-wrap: wrap;
-            justify-content: space-between;
-            align-items: center;
+            flex-direction: column;
+            align-items: stretch;
             gap: 15px;
+            max-height: calc(100vh - 80px);
+            overflow-y: auto;
         }
         .control-group {
             display: flex;
-            align-items: center;
+            flex-direction: column;
+            align-items: stretch;
             gap: 10px;
         }
-        select, input[type="file"] {
+        select, input[type="file"], button {
             padding: 5px;
             border: 1px solid #ccc;
             border-radius: 4px;
         }
+        #path-selector,
+        #predicate-selector {
+            width: 100%;
+        }
         .instructions {
             font-size: 0.9em;
             color: #555;
-            flex-basis: 100%;
         }
         .container {
             display: flex;
@@ -83,12 +94,21 @@
             margin-top: 5px;
             font-size: 0.9em;
         }
+        @media (max-width: 1000px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+            .controls {
+                max-height: none;
+                overflow-y: visible;
+            }
+        }
     </style>
 </head>
 <body>
 
     <h2>Path Finder Result Graph</h2>
-    
+    <div class="layout">
     <div class="controls">
         <div class="control-group">
             <label for="file-upload" style="font-weight: bold;">1. Upload JSON Result:</label>
@@ -100,6 +120,25 @@
             <select id="path-selector" disabled multiple size="8">
                 <option value="">Load a file first...</option>
             </select>
+        </div>
+        <div class="control-group">
+            <label for="top-n-selector" style="font-weight: bold;">3. Top N Paths:</label>
+            <select id="top-n-selector">
+                <option value="20">20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+                <option value="200" selected>200</option>
+                <option value="500">500</option>
+                <option value="all">All</option>
+            </select>
+            <button id="apply-top-n" type="button">Apply</button>
+        </div>
+        <div class="control-group">
+            <label for="predicate-selector" style="font-weight: bold;">4. Filter Predicates:</label>
+            <select id="predicate-selector" disabled multiple size="6">
+                <option value="__ALL__" selected>All predicates</option>
+            </select>
+            <button id="apply-predicate-filter" type="button" disabled>Apply</button>
         </div>
         <div class="instructions">
             <strong>Tip:</strong> Select one path or multiple paths in the dropdown (Command/Ctrl-click for non-adjacent options). Drag nodes freely to rearrange the graph.
@@ -115,6 +154,7 @@
             <p style="color: #666; font-style: italic;">Click on an edge (line) or node (box) in the graph above to view its detailed annotations here.</p>
         </div>
     </div>
+    </div>
 
     <script type="text/javascript">
         // Global variables to hold the network data
@@ -126,10 +166,13 @@
         let kgNodesMaster = {};
         let kgEdgesMaster = {};
         let graphViews = {};
+        let allPathEntries = [];
+        let availablePredicates = [];
         let queryNodeIds = new Set(); // Subject/object nodes from the query
         let querySubjectIds = [];
         let queryObjectIds = [];
         let nodeLabels = {};           // curie -> human-readable label
+        const DEFAULT_TOP_N = 200;
 
         async function resolveNodeLabels(nodeIds) {
             if (nodeIds.length === 0) return;
@@ -219,6 +262,78 @@
             const pathSelector = document.getElementById('path-selector');
             const selected = Array.from(pathSelector.selectedOptions).map(opt => opt.value).filter(Boolean);
             return selected.length > 0 ? selected : ['ALL'];
+        }
+
+        function formatPredicateLabel(predicate) {
+            return predicate ? predicate.replace('biolink:', '').replace(/_/g, ' ') : 'related to';
+        }
+
+        function populatePredicateSelector() {
+            const predicateSelector = document.getElementById('predicate-selector');
+            const applyPredicateBtn = document.getElementById('apply-predicate-filter');
+
+            const predicateSet = new Set();
+            Object.values(kgEdgesMaster).forEach(edgeInfo => {
+                if (edgeInfo && edgeInfo.subject && edgeInfo.object && edgeInfo.predicate) {
+                    predicateSet.add(edgeInfo.predicate);
+                }
+            });
+
+            availablePredicates = Array.from(predicateSet).sort((a, b) => a.localeCompare(b));
+
+            predicateSelector.innerHTML = '<option value="__ALL__" selected>All predicates</option>';
+            availablePredicates.forEach(predicate => {
+                const option = document.createElement('option');
+                option.value = predicate;
+                option.textContent = formatPredicateLabel(predicate);
+                predicateSelector.appendChild(option);
+            });
+
+            predicateSelector.disabled = false;
+            applyPredicateBtn.disabled = false;
+        }
+
+        function getSelectedPredicateSet() {
+            const predicateSelector = document.getElementById('predicate-selector');
+            const selectedValues = Array.from(predicateSelector.selectedOptions).map(opt => opt.value);
+            if (selectedValues.length === 0 || selectedValues.includes('__ALL__')) return null;
+            return new Set(selectedValues);
+        }
+
+        function getTopNValue() {
+            const topNSelector = document.getElementById('top-n-selector');
+            const value = topNSelector ? topNSelector.value : String(DEFAULT_TOP_N);
+            if (value === 'all') return Number.MAX_SAFE_INTEGER;
+            const parsed = parseInt(value, 10);
+            return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_TOP_N;
+        }
+
+        function applyTopNPathsLimit() {
+            const pathSelector = document.getElementById('path-selector');
+            const topN = getTopNValue();
+
+            const limitedEntries = allPathEntries.slice(0, topN);
+
+            graphViews = { "ALL": Object.keys(kgEdgesMaster) };
+            pathSelector.innerHTML = '<option value="ALL">All Paths (Full Graph)</option>';
+
+            limitedEntries.forEach(entry => {
+                graphViews[entry.key] = entry.edgeIds;
+                const option = document.createElement('option');
+                option.value = entry.key;
+                option.textContent = `${entry.displayName} (${entry.edgeCount} ${entry.edgeCount === 1 ? 'edge' : 'edges'})`;
+                pathSelector.appendChild(option);
+            });
+
+            pathSelector.disabled = false;
+            pathSelector.options[0].selected = true;
+
+            const countBadge = document.getElementById('path-count');
+            const shownPathCount = limitedEntries.length;
+            countBadge.textContent = shownPathCount + (shownPathCount === 1 ? ' path' : ' paths');
+            countBadge.style.display = 'inline';
+
+            updateNetworkView(['ALL']);
         }
 
         // 1. Listen for file upload
@@ -370,10 +485,12 @@
             container.innerHTML = '';
             kgEdgesMaster = kgData.edges;
             graphViews = { "ALL": Object.keys(kgEdgesMaster) }; // Default view: All edges
+            populatePredicateSelector();
 
             pathSelector.innerHTML = '<option value="ALL">All Paths (Full Graph)</option>';
 
             // 3. Extract paths/views. Use auxiliary_graphs if available, else group by intermediate nodes dynamically.
+            const pathEntries = [];
             if (auxData && Object.keys(auxData).length > 0) {
                 Object.entries(auxData).forEach(([key, value]) => {
                     // Extract edge IDs whether it's an array or TRAPI 1.4 object
@@ -385,12 +502,9 @@
                     let nodeNameMatch = key.match(/_(.+)$/); 
                     let displayName = nodeNameMatch ? `Path via ${nodeNameMatch[1]}` : `Path: ${key}`;
                     
-                    graphViews[key] = renderableEdgeIds;
-                    
-                    let option = document.createElement('option');
-                    option.value = key;
-                    option.textContent = `${displayName} (${edgeCount} ${edgeCount === 1 ? 'edge' : 'edges'})`;
-                    pathSelector.appendChild(option);
+                    if (edgeCount > 0) {
+                        pathEntries.push({ key, edgeIds: renderableEdgeIds, displayName, edgeCount });
+                    }
                 });
             } else {
                 // Fallback: Group by nodes with Degree > 1 to simulate intermediate paths
@@ -409,33 +523,56 @@
                         let viewKey = `node_${nodeId}`;
                         const renderableEdgeIds = getRenderableUniqueEdgeIds(Array.from(edgeSet));
                         const edgeCount = renderableEdgeIds.length;
-                        graphViews[viewKey] = renderableEdgeIds;
-                        
-                        let option = document.createElement('option');
-                        option.value = viewKey;
-                        option.textContent = `Path via ${nodeId} (${edgeCount} ${edgeCount === 1 ? 'edge' : 'edges'})`;
-                        pathSelector.appendChild(option);
+                        if (edgeCount > 0) {
+                            pathEntries.push({
+                                key: viewKey,
+                                edgeIds: renderableEdgeIds,
+                                displayName: `Path via ${nodeId}`,
+                                edgeCount
+                            });
+                        }
                     }
                 });
             }
 
-            pathSelector.disabled = false;
-            pathSelector.options[0].selected = true;
+            pathEntries.sort((a, b) => {
+                if (b.edgeCount !== a.edgeCount) return b.edgeCount - a.edgeCount;
+                return a.displayName.localeCompare(b.displayName);
+            });
+            allPathEntries = pathEntries;
 
-            // Show path count (subtract 1 for the "ALL" entry)
-            const pathCount = Object.keys(graphViews).length - 1;
-            const countBadge = document.getElementById('path-count');
-            countBadge.textContent = pathCount + (pathCount === 1 ? ' path' : ' paths');
-            countBadge.style.display = 'inline';
+            // Default to top 200 paths on each new file load.
+            document.getElementById('top-n-selector').value = String(DEFAULT_TOP_N);
+            applyTopNPathsLimit();
 
             initializeNetwork(container);
-
-            // Draw the default full graph
-            updateNetworkView(['ALL']);
         }
 
         // 4. Update Network when Dropdown changes
         document.getElementById('path-selector').addEventListener('change', function() {
+            updateNetworkView(getSelectedViewKeys());
+        });
+
+        document.getElementById('apply-top-n').addEventListener('click', function() {
+            applyTopNPathsLimit();
+        });
+
+        document.getElementById('apply-predicate-filter').addEventListener('click', function() {
+            updateNetworkView(getSelectedViewKeys());
+        });
+
+        document.getElementById('predicate-selector').addEventListener('change', function(e) {
+            const options = Array.from(e.target.options);
+            const allOption = options.find(opt => opt.value === '__ALL__');
+            const specificSelected = options.some(opt => opt.value !== '__ALL__' && opt.selected);
+
+            if (specificSelected && allOption) {
+                allOption.selected = false;
+            }
+            if (!specificSelected && allOption) {
+                allOption.selected = true;
+            }
+
             updateNetworkView(getSelectedViewKeys());
         });
 
@@ -447,7 +584,12 @@
                 const ids = graphViews[key] || [];
                 combinedEdgeIds.push(...ids);
             });
-            const edgeIdsToShow = getRenderableUniqueEdgeIds(combinedEdgeIds);
+            const selectedPredicateSet = getSelectedPredicateSet();
+            const edgeIdsToShow = getRenderableUniqueEdgeIds(combinedEdgeIds).filter(edgeId => {
+                if (!selectedPredicateSet) return true;
+                const edgeInfo = kgEdgesMaster[edgeId];
+                return !!(edgeInfo && edgeInfo.predicate && selectedPredicateSet.has(edgeInfo.predicate));
+            });
             
             const visEdges = [];
             const nodeSet = new Set();
@@ -495,7 +637,7 @@
 
                 const total = collapsedEdges.length;
                 collapsedEdges.forEach((edge, idx) => {
-                    const labelBase = edge.predicate ? edge.predicate.replace('biolink:', '').replace(/_/g, ' ') : 'related to';
+                    const labelBase = formatPredicateLabel(edge.predicate);
                     const label = edge.collapsed_count > 1 ? `${labelBase} (${edge.collapsed_count})` : labelBase;
 
                     let smooth = { enabled: false };
