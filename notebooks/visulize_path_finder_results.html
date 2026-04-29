@@ -140,6 +140,10 @@
             </select>
             <button id="apply-predicate-filter" type="button" disabled>Apply</button>
         </div>
+        <div class="control-group">
+            <label style="font-weight: bold;">5. Export:</label>
+            <button id="download-graph" type="button" disabled>Download Shown Graph</button>
+        </div>
         <div class="instructions">
             <strong>Tip:</strong> Select one path or multiple paths in the dropdown (Command/Ctrl-click for non-adjacent options). Drag nodes freely to rearrange the graph.
         </div>
@@ -168,6 +172,7 @@
         let graphViews = {};
         let allPathEntries = [];
         let availablePredicates = [];
+        let currentRenderedGraph = { nodes: [], edges: [] };
         let queryNodeIds = new Set(); // Subject/object nodes from the query
         let querySubjectIds = [];
         let queryObjectIds = [];
@@ -306,6 +311,35 @@
             if (value === 'all') return Number.MAX_SAFE_INTEGER;
             const parsed = parseInt(value, 10);
             return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_TOP_N;
+        }
+
+        function downloadCurrentGraph() {
+            if (!currentRenderedGraph || currentRenderedGraph.nodes.length === 0) {
+                alert('No graph is currently displayed to download.');
+                return;
+            }
+
+            const selectedPredicates = getSelectedPredicateSet();
+            const exportPayload = {
+                exported_at: new Date().toISOString(),
+                selected_views: getSelectedViewKeys(),
+                selected_predicates: selectedPredicates ? Array.from(selectedPredicates) : ['ALL'],
+                node_count: currentRenderedGraph.nodes.length,
+                edge_count: currentRenderedGraph.edges.length,
+                nodes: currentRenderedGraph.nodes,
+                edges: currentRenderedGraph.edges
+            };
+
+            const blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: 'application/json' });
+            const downloadUrl = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+            link.href = downloadUrl;
+            link.download = `shown_graph_${stamp}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(downloadUrl);
         }
 
         function applyTopNPathsLimit() {
@@ -561,6 +595,10 @@
             updateNetworkView(getSelectedViewKeys());
         });
 
+        document.getElementById('download-graph').addEventListener('click', function() {
+            downloadCurrentGraph();
+        });
+
         document.getElementById('predicate-selector').addEventListener('change', function(e) {
             const options = Array.from(e.target.options);
             const allOption = options.find(opt => opt.value === '__ALL__');
@@ -702,6 +740,19 @@
             networkData.edges.clear();
             networkData.nodes.add(visNodes);
             networkData.edges.add(visEdges);
+
+            currentRenderedGraph = {
+                nodes: visNodes.map(n => ({ id: n.id, name: nodeLabels[n.id] || n.id, label: n.label })),
+                edges: visEdges.map(e => ({
+                    id: e.id,
+                    from: e.from,
+                    to: e.to,
+                    label: e.label,
+                    collapsed_count: e.collapsed_count || 1,
+                    underlying_edge_ids: e.raw_edge_ids || [e.id]
+                }))
+            };
+            document.getElementById('download-graph').disabled = false;
 
             // For a single selected path, run a fresh auto-layout and fit so nodes/edges are clearly visible.
             if (network && isSinglePathSelection) {
