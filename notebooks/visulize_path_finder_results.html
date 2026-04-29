@@ -141,7 +141,16 @@
             <button id="apply-predicate-filter" type="button" disabled>Apply</button>
         </div>
         <div class="control-group">
-            <label style="font-weight: bold;">5. Export:</label>
+            <label for="highlight-input" style="font-weight: bold;">5. Highlight Nodes:</label>
+            <textarea id="highlight-input" rows="3" placeholder="CURIE or name, comma-separated&#10;e.g. HGNC:1100, BRCA1" style="width:100%; box-sizing:border-box; font-size:12px; resize:vertical; border:1px solid #ccc; border-radius:3px; padding:4px;"></textarea>
+            <div style="display:flex; gap:4px; margin-top:4px;">
+                <button id="apply-highlight" type="button">Apply</button>
+                <button id="clear-highlight" type="button">Clear</button>
+            </div>
+            <div id="highlight-status" style="font-size:11px; color:#555; margin-top:3px;"></div>
+        </div>
+        <div class="control-group">
+            <label style="font-weight: bold;">6. Export:</label>
             <button id="download-graph" type="button" disabled>Download Shown Graph</button>
         </div>
         <div class="instructions">
@@ -174,10 +183,20 @@
         let availablePredicates = [];
         let currentRenderedGraph = { nodes: [], edges: [] };
         let queryNodeIds = new Set(); // Subject/object nodes from the query
+        let highlightNodeSet = new Set(); // User-supplied nodes to highlight in red
         let querySubjectIds = [];
         let queryObjectIds = [];
         let nodeLabels = {};           // curie -> human-readable label
         const DEFAULT_TOP_N = 200;
+
+        // Returns the background colour for a node, respecting the highlight set.
+        function getNodeBgColor(nodeId) {
+            if (highlightNodeSet.has(nodeId)) return '#FF4444'; // User-highlighted – red
+            if (queryNodeIds.has(nodeId)) return '#4A90D9';     // Query subject/object – blue
+            if (nodeId.includes('PUBCHEM')) return '#FFD2D2';   // Compound – light red
+            if (nodeId.includes('MONDO') || nodeId.includes('DOID')) return '#D2FFD2'; // Disease – green
+            return '#D2E5FF'; // Default – light blue
+        }
 
         async function resolveNodeLabels(nodeIds) {
             if (nodeIds.length === 0) return;
@@ -592,8 +611,81 @@
         });
 
         document.getElementById('apply-predicate-filter').addEventListener('click', function() {
-            updateNetworkView(getSelectedViewKeys());
+            applyPredicateFilterOnly();
         });
+
+        document.getElementById('apply-highlight').addEventListener('click', function() {
+            applyNodeHighlight();
+        });
+
+        document.getElementById('clear-highlight').addEventListener('click', function() {
+            document.getElementById('highlight-input').value = '';
+            highlightNodeSet.clear();
+            document.getElementById('highlight-status').textContent = '';
+            refreshNodeColors();
+        });
+
+        // Parse the highlight input and update node colours without re-layout.
+        function applyNodeHighlight() {
+            const raw = document.getElementById('highlight-input').value;
+            const tokens = raw.split(',').map(s => s.trim()).filter(Boolean);
+            if (!tokens.length) {
+                highlightNodeSet.clear();
+                document.getElementById('highlight-status').textContent = '';
+                refreshNodeColors();
+                return;
+            }
+
+            // Build reverse map: lowercase name/curie -> nodeId
+            const allRenderedIds = networkData.nodes.getIds();
+            const lowerIdMap = {};
+            allRenderedIds.forEach(id => {
+                lowerIdMap[id.toLowerCase()] = id;
+                const name = nodeLabels[id];
+                if (name) lowerIdMap[name.toLowerCase()] = id;
+            });
+
+            highlightNodeSet.clear();
+            const matched = [];
+            const unmatched = [];
+            tokens.forEach(tok => {
+                const key = tok.toLowerCase();
+                if (lowerIdMap[key]) {
+                    highlightNodeSet.add(lowerIdMap[key]);
+                    matched.push(tok);
+                } else {
+                    unmatched.push(tok);
+                }
+            });
+
+            const statusEl = document.getElementById('highlight-status');
+            if (matched.length && !unmatched.length) {
+                statusEl.textContent = `Highlighted ${matched.length} node(s).`;
+                statusEl.style.color = '#2a7a2a';
+            } else if (matched.length) {
+                statusEl.textContent = `Highlighted ${matched.length}; not found: ${unmatched.join(', ')}.`;
+                statusEl.style.color = '#c07000';
+            } else {
+                statusEl.textContent = `No matching nodes found in current view.`;
+                statusEl.style.color = '#aa0000';
+            }
+
+            refreshNodeColors();
+        }
+
+        // Re-apply colours to all currently rendered nodes without touching positions or edges.
+        function refreshNodeColors() {
+            const allRenderedIds = networkData.nodes.getIds();
+            const updates = allRenderedIds.map(nodeId => ({
+                id: nodeId,
+                color: {
+                    background: getNodeBgColor(nodeId),
+                    border: '#2c3e50',
+                    highlight: { background: '#FFF79A', border: '#2c3e50' }
+                }
+            }));
+            networkData.nodes.update(updates);
+        }
 
         document.getElementById('download-graph').addEventListener('click', function() {
             downloadCurrentGraph();
@@ -611,8 +703,144 @@
                 allOption.selected = true;
             }
 
-            updateNetworkView(getSelectedViewKeys());
+            applyPredicateFilterOnly();
         });
+
+        // Lightweight predicate filter that preserves existing node positions.
+        function applyPredicateFilterOnly() {
+            if (!network) return;
+
+            const viewKeys = getSelectedViewKeys();
+            const keys = Array.isArray(viewKeys) ? viewKeys : [viewKeys];
+            const combinedEdgeIds = [];
+            keys.forEach(key => {
+                const ids = graphViews[key] || [];
+                combinedEdgeIds.push(...ids);
+            });
+            const selectedPredicateSet = getSelectedPredicateSet();
+            const edgeIdsToShow = getRenderableUniqueEdgeIds(combinedEdgeIds).filter(edgeId => {
+                if (!selectedPredicateSet) return true;
+                const edgeInfo = kgEdgesMaster[edgeId];
+                return !!(edgeInfo && edgeInfo.predicate && selectedPredicateSet.has(edgeInfo.predicate));
+            });
+
+            // Build new vis-edges (same collapsing logic as updateNetworkView)
+            const visEdges = [];
+            const nodeSet = new Set();
+            const edgeGroups = {};
+            edgeIdsToShow.forEach(edgeId => {
+                const edgeInfo = kgEdgesMaster[edgeId];
+                if (!edgeInfo || !edgeInfo.subject || !edgeInfo.object) return;
+                nodeSet.add(edgeInfo.subject);
+                nodeSet.add(edgeInfo.object);
+                const pairKey = `${edgeInfo.subject}=>${edgeInfo.object}`;
+                if (!edgeGroups[pairKey]) edgeGroups[pairKey] = [];
+                edgeGroups[pairKey].push({ edgeId, edgeInfo });
+            });
+
+            Object.values(edgeGroups).forEach(group => {
+                const collapsedByRule = {};
+                group.forEach(item => {
+                    const predicateKey = item.edgeInfo.predicate || '__NO_PREDICATE__';
+                    const pksKey = getPrimaryKnowledgeSourceSignature(item.edgeInfo);
+                    const collapseKey = `${predicateKey}||${pksKey}`;
+                    if (!collapsedByRule[collapseKey]) collapsedByRule[collapseKey] = [];
+                    collapsedByRule[collapseKey].push(item);
+                });
+                const collapsedEdges = Object.values(collapsedByRule).map(items => {
+                    const rep = items[0];
+                    const rawDataList = items.map(i => i.edgeInfo);
+                    const rawEdgeIds = items.map(i => i.edgeId);
+                    return {
+                        id: rawEdgeIds.join('||'),
+                        from: rep.edgeInfo.subject,
+                        to: rep.edgeInfo.object,
+                        predicate: rep.edgeInfo.predicate,
+                        raw_data: rep.edgeInfo,
+                        raw_data_list: rawDataList,
+                        raw_edge_ids: rawEdgeIds,
+                        collapsed_count: items.length
+                    };
+                });
+                const total = collapsedEdges.length;
+                collapsedEdges.forEach((edge, idx) => {
+                    const labelBase = formatPredicateLabel(edge.predicate);
+                    const label = edge.collapsed_count > 1 ? `${labelBase} (${edge.collapsed_count})` : labelBase;
+                    let smooth = { enabled: false };
+                    let vadjust = 0;
+                    if (total > 1) {
+                        const band = Math.floor(idx / 2) + 1;
+                        const clockwise = idx % 2 === 0;
+                        smooth = { enabled: true, type: clockwise ? 'curvedCW' : 'curvedCCW', roundness: Math.min(0.12 + band * 0.08, 0.6) };
+                        vadjust = (clockwise ? 1 : -1) * (6 + band * 4);
+                    }
+                    visEdges.push({
+                        id: edge.id,
+                        from: edge.from,
+                        to: edge.to,
+                        label,
+                        font: { align: 'middle', size: 12, background: 'rgba(255,255,255,0.8)', vadjust },
+                        arrows: 'to',
+                        smooth,
+                        color: { color: '#848484', highlight: '#2B7CE9', hover: '#2B7CE9' },
+                        raw_data: edge.raw_data,
+                        raw_data_list: edge.raw_data_list,
+                        raw_edge_ids: edge.raw_edge_ids,
+                        collapsed_count: edge.collapsed_count
+                    });
+                });
+            });
+
+            // Preserve positions of nodes already rendered; only remove orphans / add newcomers.
+            const currentPositions = network.getPositions();
+            const existingNodeIds = new Set(networkData.nodes.getIds());
+            const newNodeIds = nodeSet;
+
+            // Remove nodes no longer needed
+            const toRemove = Array.from(existingNodeIds).filter(id => !newNodeIds.has(id));
+            if (toRemove.length) networkData.nodes.remove(toRemove);
+
+            // Add nodes that are new (not yet in dataset)
+            const toAdd = [];
+            Array.from(newNodeIds).forEach(nodeId => {
+                if (existingNodeIds.has(nodeId)) return; // already present, keep position
+                const bgColor = getNodeBgColor(nodeId);
+                toAdd.push({
+                    id: nodeId,
+                    label: nodeLabels[nodeId] || nodeId,
+                    title: nodeLabels[nodeId] ? `${nodeLabels[nodeId]}\n${nodeId}` : nodeId,
+                    shape: 'box',
+                    color: { background: bgColor, border: '#2c3e50', highlight: { background: '#FFF79A', border: '#2c3e50' } },
+                    font: { size: 14, face: 'Arial' }
+                });
+            });
+            if (toAdd.length) networkData.nodes.add(toAdd);
+
+            // For nodes that already exist and have a recorded position, pin them
+            // so the filter operation never triggers a re-layout.
+            Array.from(newNodeIds).forEach(nodeId => {
+                if (!existingNodeIds.has(nodeId)) return;
+                const pos = currentPositions[nodeId];
+                if (pos) {
+                    networkData.nodes.update({ id: nodeId, x: pos.x, y: pos.y, fixed: { x: true, y: true } });
+                }
+            });
+
+            // Replace all edges without touching physics
+            networkData.edges.clear();
+            networkData.edges.add(visEdges);
+
+            // Update download payload
+            currentRenderedGraph = {
+                nodes: Array.from(newNodeIds).map(id => ({ id, name: nodeLabels[id] || id, label: nodeLabels[id] || id })),
+                edges: visEdges.map(e => ({
+                    id: e.id, from: e.from, to: e.to, label: e.label,
+                    collapsed_count: e.collapsed_count || 1,
+                    underlying_edge_ids: e.raw_edge_ids || [e.id]
+                }))
+            };
+            document.getElementById('download-graph').disabled = false;
+        }
 
         function updateNetworkView(viewKeys) {
             const keys = Array.isArray(viewKeys) ? viewKeys : [viewKeys];
@@ -709,17 +937,14 @@
             });
 
             const visNodes = Array.from(nodeSet).map(nodeId => {
-                let bgColor = '#D2E5FF'; // Default blue (e.g., Genes)
-                if (nodeId.includes('PUBCHEM')) bgColor = '#FFD2D2'; // Compound (red)
-                else if (nodeId.includes('MONDO') || nodeId.includes('DOID')) bgColor = '#D2FFD2'; // Disease (green)
-
-                // Query subject/object nodes get blue
-                if (queryNodeIds.has(nodeId)) bgColor = '#4A90D9';
+                let bgColor = getNodeBgColor(nodeId);
 
                 // Highlight intermediate node if it's currently selected in the view
-                const selectedTexts = Array.from(document.getElementById('path-selector').selectedOptions).map(opt => opt.text);
-                let isTargetNode = selectedTexts.some(text => text.includes(nodeId));
-                if (isTargetNode) bgColor = '#FFF79A'; 
+                if (!highlightNodeSet.has(nodeId)) {
+                    const selectedTexts = Array.from(document.getElementById('path-selector').selectedOptions).map(opt => opt.text);
+                    const isTargetNode = selectedTexts.some(text => text.includes(nodeId));
+                    if (isTargetNode) bgColor = '#FFF79A';
+                }
 
                 return {
                     id: nodeId,
