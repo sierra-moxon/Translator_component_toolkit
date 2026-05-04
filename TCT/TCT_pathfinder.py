@@ -103,36 +103,99 @@ def build_query_graph(start_node_id, end_node_id, start_node_categories=None, en
     return q
 
 
+def generate_score_results(results, method='infores'):
+    """
+    Generates a score dict, and a list of "analyses".
+    method can be 'infores' or 'edges'
+    """
+    graph_scores = {}
+    max_score = 0
+    auxiliary_graphs = results['auxiliary_graphs']
+    for k, graph in auxiliary_graphs.items():
+        if method == 'infores':
+            sources = set()
+            for edge_index in graph:
+                edge = results['knowledge_graph']['edges'][edge_index]
+                for resource in edge['sources']:
+                    sources.add(resource['resource_id'])
+            score = len(sources)
+            if score > max_score:
+                max_score = score
+        else:
+            score = len(graph)
+            if score > max_score:
+                max_score = score
+        graph_scores[k] = score
+    graph_scores_formatted = []
+    for k in graph_scores.keys():
+        graph_scores[k] = graph_scores[k]/max_score
+        graph_scores_formatted.append({
+            'attributes': None,
+            'path_bindings': {
+                'p0': [{'id': k}]},
+            'resource_id': 'infores:tct',
+            'score': graph_scores[k],
+            'scoring_method': None,
+            'support_graphs': None
+            })
+    return graph_scores, graph_scores_formatted
+
+
 def parse_results_for_pathfinder(start_node_id:str, end_node_id:str, result1:dict, result2:dict,
-        start_node_categories=None, end_node_categories=None):
+        start_node_categories=None, end_node_categories=None,
+        get_node_info=True,
+        scoring_method='infores'):
     """
     Converts the results of two TRAPI queries into the same general json format as the other pathfinder APIs.
+    scoring_method is how the node scores are generated, and could be 'infores' or 'edges'.
     """
-    # TODO: parse results...
     # nodes
+    # TODO: get some node info? node attributes
+    node_info = {}
     # edges is a dict of intermediate nodes
     intermediate_node_edges = {}
     for k, v in result1.items():
         i1 = v['subject']
         i2 = v['object']
+        s_o = 'object'
         if i1 == start_node_id:
             intermediate_node_id = i2
+            s_o = 'object'
         elif i2 == start_node_id:
             intermediate_node_id = i1
+            s_o = 'subject'
         else:
             continue
         if (i1 == start_node_id or i2 == start_node_id) and intermediate_node_id in intermediate_node_edges:
             intermediate_node_edges[intermediate_node_id].append((k, v))
         else:
             intermediate_node_edges[intermediate_node_id] = [(k, v)]
+        # add node dict
+        if intermediate_node_id not in node_info:
+            node_dict = {
+            }
+            node_info[intermediate_node_id] = node_dict
+        else:
+            node_dict = node_info[intermediate_node_id]
+        for attribute in v['attributes']:
+            if attribute['attribute_type_id'] == f'{s_o}_category':
+                if 'categories' not in node_dict:
+                    node_dict['categories'] = set([attribute['value']])
+                else:
+                    node_dict['categories'].add(attribute['value'])
+            if attribute['attribute_type_id'] == f'{s_o}_name' and 'name' not in node_dict:
+                node_dict['name'] = attribute['value']
+        node_info[intermediate_node_id] = node_dict
     connecting_intermediate_nodes = {}
     for k, v in result2.items():
         i1 = v['subject']
         i2 = v['object']
         if i1 == end_node_id:
             intermediate_node_id = i2
+            s_o = 'object'
         elif i2 == end_node_id:
             intermediate_node_id = i1
+            s_o = 'subject'
         else:
             continue
         if (i1 == end_node_id or i2 == end_node_id) and intermediate_node_id in intermediate_node_edges:
@@ -140,6 +203,24 @@ def parse_results_for_pathfinder(start_node_id:str, end_node_id:str, result1:dic
                 connecting_intermediate_nodes[intermediate_node_id]['e2'].append((k, v))
             else:
                 connecting_intermediate_nodes[intermediate_node_id] = {'e1': intermediate_node_edges[intermediate_node_id], 'e2' : [(k, v)]}
+        if intermediate_node_id not in node_info:
+            node_dict = {
+            }
+            node_info[intermediate_node_id] = node_dict
+        else:
+            node_dict = node_info[intermediate_node_id]
+        for attribute in v['attributes']:
+            if attribute['attribute_type_id'] == f'{s_o}_category':
+                if 'categories' not in node_dict:
+                    node_dict['categories'] = set([attribute['value']])
+                else:
+                    node_dict['categories'].add(attribute['value'])
+            if attribute['attribute_type_id'] == f'{s_o}_name' and 'name' not in node_dict:
+                node_dict['name'] = attribute['value']
+        node_info[intermediate_node_id] = node_dict
+    for k, v in node_info.items():
+        if 'categories' in v:
+            v['categories'] = list(v['categories'])
     all_edges = {}
     all_auxiliary_graphs = {}
     i = 1
@@ -155,19 +236,37 @@ def parse_results_for_pathfinder(start_node_id:str, end_node_id:str, result1:dic
         keys = [x[0] for x in e1s] + [x[0] for x in e2s]
         all_auxiliary_graphs[f'aux_{i}_{i1}'] = keys
         i += 1
+    # generate output json
     output = {
         'query_graph': build_query_graph(start_node_id, end_node_id, start_node_categories, end_node_categories),
-        'knowledge_graph': {'nodes': {x: {} for x in connection_counts.keys()},
+        # TODO: don't drop the nodes
+        'knowledge_graph': {'nodes': {x: node_info[x] for x in connection_counts.keys()},
                             'edges': all_edges,
                            },
         'results': [{'analyses': []}],
         'auxiliary_graphs': all_auxiliary_graphs
     }
+    graph_scores, graph_scores_formatted = generate_score_results(output, method=scoring_method)
+    output['results'][0]['analyses'] = graph_scores_formatted
+    if get_node_info:
+        from .node_normalizer import get_normalized_nodes
+        nodes_to_add = []
+        for k, v in output['knowledge_graph']['nodes'].items():
+            if 'name' not in v or 'categories' not in v:
+                nodes_to_add.append(k)
+        normalized_nodes = get_normalized_nodes(nodes_to_add, mode='post')
+        for node_id in nodes_to_add:
+            nn = normalized_nodes[node_id]
+            output['knowledge_graph']['nodes'][node_id] = {'name': nn.label, 'categories': nn.types}
     return output
 
 
 def pathfinder(input_node1_id:str, input_node2_id:str,
-        intermediate_categories:list, APInames, metaKG, API_predicates):
+        intermediate_categories:list, APInames, metaKG, API_predicates,
+        scoring_method='infores'):
+    """
+    Returns a Pathfinder output for the given pair of nodes. scoring_method could be 'infores' or 'edges'.
+    """
     # get categories for input nodes
     normalized_node_dict = node_normalizer.get_normalized_nodes([input_node1_id, input_node2_id])
     input_node1_info = normalized_node_dict[input_node1_id]
@@ -210,26 +309,13 @@ def pathfinder(input_node1_id:str, input_node2_id:str,
                                 APInames=APInames,
                                 API_predicates=API_predicates,
                                 max_workers=len(sele_APIs2))
-
-    result_parsed1 = parse_KG(result1)
-        # Step 7: Ranking the results. This ranking method is based on the number of unique
-        # primary infores. It can only be used to rank the results with one defined node.
-    result_ranked_by_primary_infores1 = rank_by_primary_infores(result_parsed1, input_node1_id)   # input_node1_id is the curie id of the
-
-    result_parsed2 = parse_KG(result2)
-    result_ranked_by_primary_infores2 = rank_by_primary_infores(result_parsed2, input_node2_id)   # input_node2_id is the curie id of the
-
-    possible_paths = len(set(result_ranked_by_primary_infores1['output_node']).intersection(set(result_ranked_by_primary_infores2['output_node'])))
-    print("Number of possible paths: ", possible_paths)
-
-    paths = merge_ranking_by_number_of_infores(result_ranked_by_primary_infores1, result_ranked_by_primary_infores2,
-            plot=False)
-
     output = parse_results_for_pathfinder(input_node1_id, input_node2_id, result1, result2,
             start_node_categories=input_node1_category,
-            end_node_categories=input_node2_category)
+            end_node_categories=input_node2_category,
+            scoring_method=scoring_method,
+            get_node_info=True)
 
-    return result1, result2, output, paths
+    return result1, result2, output
 
 
 
