@@ -148,9 +148,10 @@
         <div class="control-group">
             <label for="file-upload" style="font-weight: bold;">1. Upload JSON Result:</label>
             <input type="file" id="file-upload" accept=".json">
+            <div id="loaded-file-name" style="font-size: 0.82em; color: #555; min-height: 1.2em; margin-top: 4px;"></div>
         </div>
         <div class="control-group">
-            <label for="path-selector" style="font-weight: bold;">2. Select View:</label>
+            <label for="path-selector" style="font-weight: bold;">2. Select View (Score Ranked):</label>
             <span id="path-count" style="font-size:0.85em; color:#fff; background:#2B7CE9; border-radius:12px; padding:2px 9px; display:none;"></span>
             <select id="path-selector" disabled multiple size="8">
                 <option value="">Load a file first...</option>
@@ -393,6 +394,35 @@
                 const edgeInfo = kgEdgesMaster[edgeId];
                 return !!(edgeInfo && edgeInfo.subject && edgeInfo.object);
             });
+        }
+
+        function extractPathScores(resultsData) {
+            const scoreMap = {};
+            if (!Array.isArray(resultsData)) return scoreMap;
+
+            resultsData.forEach(result => {
+                const analyses = Array.isArray(result && result.analyses) ? result.analyses : [];
+                analyses.forEach(analysis => {
+                    const score = Number(analysis && analysis.score);
+                    if (!Number.isFinite(score)) return;
+
+                    const pathBindings = analysis && analysis.path_bindings;
+                    if (!pathBindings || typeof pathBindings !== 'object') return;
+
+                    Object.values(pathBindings).forEach(bindingList => {
+                        if (!Array.isArray(bindingList)) return;
+                        bindingList.forEach(binding => {
+                            const pathId = binding && binding.id;
+                            if (!pathId) return;
+                            if (!(pathId in scoreMap) || score > scoreMap[pathId]) {
+                                scoreMap[pathId] = score;
+                            }
+                        });
+                    });
+                });
+            });
+
+            return scoreMap;
         }
 
         function getPrimaryKnowledgeSourceSignature(edgeInfo) {
@@ -662,7 +692,8 @@
                 graphViews[entry.key] = entry.edgeIds;
                 const option = document.createElement('option');
                 option.value = entry.key;
-                option.textContent = `${entry.displayName} (${entry.edgeCount} ${entry.edgeCount === 1 ? 'edge' : 'edges'})`;
+                const scoreText = Number.isFinite(entry.score) ? entry.score.toFixed(4) : 'N/A';
+                option.textContent = `${entry.displayName} (score: ${scoreText}, ${entry.edgeCount} ${entry.edgeCount === 1 ? 'edge' : 'edges'})`;
                 pathSelector.appendChild(option);
             });
 
@@ -681,15 +712,18 @@
         document.getElementById('file-upload').addEventListener('change', function(event) {
             const file = event.target.files[0];
             if (!file) return;
+            const loadedFileNameEl = document.getElementById('loaded-file-name');
 
             const reader = new FileReader();
             reader.onload = async function(e) {
                 try {
                     const jsonData = JSON.parse(e.target.result);
                     await processGraphData(jsonData);
+                    loadedFileNameEl.textContent = `Loaded file: ${file.name}`;
                 } catch (error) {
                     alert('Error parsing JSON file. Please ensure it is a valid JSON format.');
                     console.error("JSON Parsing Error:", error);
+                    loadedFileNameEl.textContent = '';
                 }
             };
             reader.readAsText(file);
@@ -749,6 +783,7 @@
             const kgData = graphData.message ? graphData.message.knowledge_graph : graphData.knowledge_graph;
             const auxData = graphData.message ? graphData.message.auxiliary_graphs : graphData.auxiliary_graphs;
             const qgData = graphData.message ? graphData.message.query_graph : graphData.query_graph;
+            const resultsData = graphData.message ? graphData.message.results : graphData.results;
 
             // Collect query subject/object node IDs (nodes with explicit ids)
             queryNodeIds = new Set();
@@ -835,19 +870,21 @@
 
             // 3. Extract paths/views. Use auxiliary_graphs if available, else group by intermediate nodes dynamically.
             const pathEntries = [];
+            const pathScoreMap = extractPathScores(resultsData);
             if (auxData && Object.keys(auxData).length > 0) {
                 Object.entries(auxData).forEach(([key, value]) => {
                     // Extract edge IDs whether it's an array or TRAPI 1.4 object
                     let edgeIds = Array.isArray(value) ? value : (value.edges || []);
                     const renderableEdgeIds = getRenderableUniqueEdgeIds(edgeIds);
                     const edgeCount = renderableEdgeIds.length;
+                    const score = Number.isFinite(pathScoreMap[key]) ? pathScoreMap[key] : null;
                     
                     // Format the name nicely (e.g., "aux_1_NCBIGene:4297" -> "Path via NCBIGene:4297")
                     let nodeNameMatch = key.match(/_(.+)$/); 
                     let displayName = nodeNameMatch ? `Path via ${nodeNameMatch[1]}` : `Path: ${key}`;
                     
                     if (edgeCount > 0) {
-                        pathEntries.push({ key, edgeIds: renderableEdgeIds, displayName, edgeCount });
+                        pathEntries.push({ key, edgeIds: renderableEdgeIds, displayName, edgeCount, score });
                     }
                 });
             } else {
@@ -880,6 +917,9 @@
             }
 
             pathEntries.sort((a, b) => {
+                const aScore = Number.isFinite(a.score) ? a.score : Number.NEGATIVE_INFINITY;
+                const bScore = Number.isFinite(b.score) ? b.score : Number.NEGATIVE_INFINITY;
+                if (bScore !== aScore) return bScore - aScore;
                 if (b.edgeCount !== a.edgeCount) return b.edgeCount - a.edgeCount;
                 return a.displayName.localeCompare(b.displayName);
             });
