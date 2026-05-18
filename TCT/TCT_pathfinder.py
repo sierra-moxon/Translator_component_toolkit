@@ -7,7 +7,8 @@ from . import node_normalizer
 from . import translator_query
 from .TCT import sele_predicates_API, parse_KG, rank_by_primary_infores, merge_ranking_by_number_of_infores
 
-def format_query_json_for_pathfinder(subject_ids, object_ids=None,
+def format_query_json_for_pathfinder(subject_ids, 
+                                     object_ids=None,
         subject_categories=None,
         object_categories=None,
         predicates=None):
@@ -254,10 +255,12 @@ def parse_results_for_pathfinder(start_node_id:str, end_node_id:str, result1:dic
         for k, v in output['knowledge_graph']['nodes'].items():
             if 'name' not in v or 'categories' not in v:
                 nodes_to_add.append(k)
-        normalized_nodes = get_normalized_nodes(nodes_to_add, mode='post')
-        for node_id in nodes_to_add:
-            nn = normalized_nodes[node_id]
-            output['knowledge_graph']['nodes'][node_id] = {'name': nn.label, 'categories': nn.types}
+        if nodes_to_add:
+            normalized_nodes = get_normalized_nodes(nodes_to_add, mode='post')
+            for node_id in nodes_to_add:
+                nn = normalized_nodes.get(node_id)
+                if nn is not None:
+                    output['knowledge_graph']['nodes'][node_id] = {'name': nn.label, 'categories': nn.types}
     return output
 
 
