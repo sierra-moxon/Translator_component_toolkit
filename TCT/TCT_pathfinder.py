@@ -11,7 +11,9 @@ def format_query_json_for_pathfinder(subject_ids,
                                      object_ids=None,
         subject_categories=None,
         object_categories=None,
-        predicates=None):
+        predicates=None,
+        constraints=None
+        ):
     '''
     Example input:
     subject_ids = ["NCBIGene:3845"]
@@ -62,8 +64,42 @@ def format_query_json_for_pathfinder(subject_ids,
 
     return query_json_temp
 
+def format_query_json_for_pathfinder_with_constraints(subject_ids, 
+                                     object_ids=None,
+        subject_categories=None,
+        object_categories=None,
+        predicates=None,
+        constraints_intermediate_category=None
+        ):
 
-def build_query_graph(start_node_id, end_node_id, start_node_categories=None, end_node_categories=None):
+    q =  {
+      "nodes": {
+        "n0": {
+          "ids": subject_ids
+        },
+        "n1": {
+          "ids": object_ids
+        }
+      },
+      "paths": {
+        "p0": {
+          "subject": "n0",
+          "object": "n1",
+          "predicates": [
+            "biolink:related_to"
+          ],
+          "constraints": [
+            {
+              "intermediate_categories": constraints_intermediate_category
+            }
+          ]
+        }
+      }
+    }
+  
+    return q
+
+def build_query_graph(start_node_id, end_node_id, start_node_categories=None, end_node_categories=None, constraints_path=None):
     """
     start_node_categories and end_node_categories are lists of categories.
     """
@@ -94,7 +130,7 @@ def build_query_graph(start_node_id, end_node_id, start_node_categories=None, en
             },
             "paths": {
                 "p0": {
-                    "constraints": None,
+                    "constraints": constraints_path,
                     "object": "on",
                     "predicates": None,
                     "subject": "sn"
@@ -362,9 +398,20 @@ def query_aragorn_pathfinder(node1_id, node1_category, node2_id, node2_category)
     response = requests.post(aragorn_endpoint, json=query_current)
     return response
 
+def query_aragorn_pathfinder_with_constraints(node1_id, node1_category, node2_id, node2_category, constraints):
+    aragorn_endpoint = 'https://shepherd.renci.org/aragorn/query'
+    query_current = format_query_json_for_pathfinder_with_constraints(node1_id, node2_id, node1_category, node2_category, constraints)
+    response = requests.post(aragorn_endpoint, json=query_current)
+    return response
 
 def query_arax_pathfinder(node1_id, node1_category, node2_id, node2_category):
     ARAX_endpoint = 'https://arax.ci.transltr.io/api/arax/v1.4/query'
     query_current = format_pathfinder_query(node1_id, node1_category, node2_id, node2_category)
+    response = requests.post(ARAX_endpoint, json=query_current)
+    return response
+
+def query_arax_pathfinder_with_constraints(node1_id, node1_category, node2_id, node2_category, constraints):
+    ARAX_endpoint = 'https://arax.ci.transltr.io/api/arax/v1.4/query'
+    query_current = format_query_json_for_pathfinder_with_constraints(node1_id, node2_id, node1_category, node2_category, constraints)
     response = requests.post(ARAX_endpoint, json=query_current)
     return response
