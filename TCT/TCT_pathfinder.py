@@ -5,97 +5,59 @@ from collections import Counter
 
 from . import node_normalizer
 from . import translator_query
-from .TCT import sele_predicates_API, parse_KG, rank_by_primary_infores, merge_ranking_by_number_of_infores
-
-def format_query_json_for_pathfinder(subject_ids, 
-                                     object_ids=None,
-        subject_categories=None,
-        object_categories=None,
-        predicates=None,
-        constraints=None
-        ):
-    '''
-    Example input:
-    subject_ids = ["NCBIGene:3845"]
-    object_ids = []
-    subject_categories = ["biolink:Gene"]
-    object_categories = ["biolink:Gene"]
-    predicates = ["biolink:positively_correlated_with", "biolink:physically_interacts_with"]
-    '''
-    query_json_temp = {
-        "message": {
-            "query_graph": {
-
-                "edges": {
-                    "e00": {
-                        "subject": "n00",
-                        "object": "n01",
-                        "predicates": predicates
-                        }
-                    },
-                "nodes": {
-                    "n00": {
-                        "ids":subject_ids, # required
-                        #"categories":[] # optional, if not provided, it will be empty
-                        },
-                    "n01": {
-                        #"ids":[],
-                        "categories":[] # required
-                        }
-                    }
-                }
-            }
-        }
-
-    if len(subject_ids) > 0:
-        query_json_temp["message"]["query_graph"]["nodes"]["n00"]["ids"] = subject_ids
-
-    if object_ids is not None and len(object_ids) > 0:
-        query_json_temp["message"]["query_graph"]["nodes"]["n01"]["ids"] = object_ids
-
-    if subject_categories is not None and len(subject_categories) > 0:
-        query_json_temp["message"]["query_graph"]["nodes"]["n00"]["categories"] = subject_categories
-
-    if object_categories is not None and len(object_categories) > 0:
-        query_json_temp["message"]["query_graph"]["nodes"]["n01"]["categories"] = object_categories
-
-    if predicates is not None and len(predicates) > 0:
-        query_json_temp["message"]["query_graph"]["edges"]["e00"]["predicates"] = predicates
-
-    return query_json_temp
+from .TCT import sele_predicates_API
 
 def format_query_json_for_pathfinder_with_constraints(subject_ids, 
                                      object_ids=None,
         subject_categories=None,
         object_categories=None,
         predicates=None,
-        constraints_intermediate_category=None
+        constraints=None,
         ):
-
+    if constraints is None or len(constraints) == 0:
+        constraints_intermediate_category = None
+    else:
+        constraints_intermediate_category = constraints
     q =  {
-      "nodes": {
-        "n0": {
-          "ids": subject_ids
-        },
-        "n1": {
-          "ids": object_ids
-        }
-      },
-      "paths": {
-        "p0": {
-          "subject": "n0",
-          "object": "n1",
-          "predicates": [
-            "biolink:related_to"
-          ],
-          "constraints": [
-            {
-              "intermediate_categories": constraints_intermediate_category
+        "message": {
+            "query_graph": {
+            "nodes": {
+                "n0": {
+                "ids": [
+                    subject_ids
+                ]
+                },
+                "n1": {
+                "ids": [
+                    object_ids
+                ]
+                }
+            },
+            "paths": {
+                "p0": {
+                "subject": "n0",
+                "object": "n1",
+                "predicates": [
+                    "biolink:related_to"
+                ],
+                "constraints": [
+                    {
+                    "intermediate_categories": constraints_intermediate_category
+                    }
+                ]
+                }
             }
-          ]
+            }
+        },
+        "submitter": "TCT",
+        #"stream_progress": True,
+        "query_options": {
+            "kp_timeout": "30",
+            "prune_threshold": "50",
+            "max_pathfinder_paths": "500",
+            "max_path_length": "4"
         }
-      }
-    }
+        }
   
     return q
 
@@ -325,14 +287,14 @@ def pathfinder(input_node1_id:str, input_node2_id:str,
     sele_predicates2, sele_APIs2, API_URLs2 = sele_predicates_API(intermediate_categories,
                                                                   input_node2_category,
                                                                   metaKG, APInames)
-    query_json1 = format_query_json_for_pathfinder(input_node1_list,  # a list of identifiers for input node1
+    query_json1 = translator_query.format_query_json(input_node1_list,  # a list of identifiers for input node1
                                     [],  # id list for the intermediate node, it can be empty list if only want to query node1
                                     input_node1_category,  # a list of categories of input node1
                                     intermediate_categories,  # a list of categories of the intermediate node
                                     sele_predicates1) # a list of predicates
 
     # for the second hop, we want the predicates to be...
-    query_json2 = format_query_json_for_pathfinder([], 
+    query_json2 = translator_query.format_query_json([], 
                                     input_node2_list,  
                                     intermediate_categories,  # a list of categories of input node2
                                     input_node2_category,  # a list of categories of the intermediate node
