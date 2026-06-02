@@ -54,3 +54,34 @@ def serialize(obj: Any) -> Any:
         return [serialize(v) for v in obj]
 
     return str(obj)
+
+
+def paginate(items: Any, limit: int | None = None, offset: int = 0) -> dict[str, Any]:
+    """Wrap a list-style result in a bounded response envelope.
+
+    The result is serialized, coerced to a list, then sliced by ``offset`` and
+    ``limit``. The envelope makes truncation explicit so an agent knows whether
+    to fetch more:
+
+    ``{"data": [...], "total": N, "returned": k, "truncated": bool,
+    "next_offset": int | None}``
+
+    A ``limit`` of ``None`` returns everything from ``offset`` onward.
+    """
+    serialized = serialize(items)
+    if not isinstance(serialized, list):
+        serialized = [serialized]
+
+    total = len(serialized)
+    start = max(offset, 0)
+    page = serialized[start:] if limit is None else serialized[start:start + limit]
+    returned = len(page)
+    consumed = start + returned
+    truncated = consumed < total
+    return {
+        "data": page,
+        "total": total,
+        "returned": returned,
+        "truncated": truncated,
+        "next_offset": consumed if truncated else None,
+    }

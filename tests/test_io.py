@@ -8,6 +8,7 @@ from translator_component_toolkit.io import (
     EXIT_UNEXPECTED,
     EXIT_UPSTREAM,
     EXIT_USAGE,
+    paginate,
     serialize,
 )
 from translator_component_toolkit.translator_node import TranslatorNode
@@ -63,3 +64,47 @@ def test_exit_codes_are_distinct():
     codes = {EXIT_OK, EXIT_USAGE, EXIT_NOT_FOUND, EXIT_UPSTREAM, EXIT_UNEXPECTED}
     assert len(codes) == 5
     assert EXIT_OK == 0
+
+
+def test_paginate_limit_truncates_and_sets_metadata():
+    env = paginate(list(range(10)), limit=3, offset=0)
+    assert env["data"] == [0, 1, 2]
+    assert env["total"] == 10
+    assert env["returned"] == 3
+    assert env["truncated"] is True
+    assert env["next_offset"] == 3
+
+
+def test_paginate_offset_advances_window():
+    env = paginate(list(range(10)), limit=3, offset=3)
+    assert env["data"] == [3, 4, 5]
+    assert env["next_offset"] == 6
+
+
+def test_paginate_last_page_is_not_truncated():
+    env = paginate(list(range(5)), limit=3, offset=3)
+    assert env["data"] == [3, 4]
+    assert env["truncated"] is False
+    assert env["next_offset"] is None
+
+
+def test_paginate_no_limit_returns_everything():
+    env = paginate(list(range(4)))
+    assert env["data"] == [0, 1, 2, 3]
+    assert env["total"] == 4
+    assert env["truncated"] is False
+    assert env["next_offset"] is None
+
+
+def test_paginate_serializes_dataframe_records():
+    df = pd.DataFrame({"a": [1, 2, 3]})
+    env = paginate(df, limit=2)
+    assert env["data"] == [{"a": 1}, {"a": 2}]
+    assert env["total"] == 3
+    assert env["truncated"] is True
+
+
+def test_paginate_wraps_non_list_as_single_item():
+    env = paginate({"k": "v"})
+    assert env["data"] == [{"k": "v"}]
+    assert env["total"] == 1
