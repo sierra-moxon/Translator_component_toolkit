@@ -1,6 +1,10 @@
+import logging
+
 import requests
 import json
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 
 def find_link(name):
@@ -157,11 +161,11 @@ def add_plover_API(APInames:dict[str, str], metaKG:pd.DataFrame) -> tuple[dict[s
             for i in range(len(data["edges"])):
                 APInames, metaKG = add_new_API_for_query(APInames, metaKG, "CATRAX BigGIM DrugResponse Performance Phase KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/BigGIM_DrugResponse_PerformancePhase/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
         else:
-            print("Warning: Failed to retrieve data from the https://multiomics.rtx.ai:9990/BigGIM_DrugResponse_PerformancePhase. Status code:", response.status_code)
+            logger.warning("Failed to retrieve data from %s. Status code: %s", "https://multiomics.rtx.ai:9990/BigGIM_DrugResponse_PerformancePhase", response.status_code)
 
 
     except requests.exceptions.RequestException:
-        print("Warning: Failed to retrieve data from the https://multiomics.rtx.ai:9990/BigGIM_DrugResponse_PerformancePhase")
+        logger.warning("Failed to retrieve data from %s", "https://multiomics.rtx.ai:9990/BigGIM_DrugResponse_PerformancePhase")
 
 
     
@@ -173,9 +177,9 @@ def add_plover_API(APInames:dict[str, str], metaKG:pd.DataFrame) -> tuple[dict[s
             for i in range(len(data["edges"])):
                 APInames, metaKG = add_new_API_for_query(APInames, metaKG, "CATRAX Pharmacogenomics KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/PharmacogenomicsKG/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
         else:
-            print("Warning: Failed to retrieve data from the https://multiomics.rtx.ai:9990/PharmacogenomicsKG. Status code:", response.status_code)
+            logger.warning("Failed to retrieve data from %s. Status code: %s", "https://multiomics.rtx.ai:9990/PharmacogenomicsKG", response.status_code)
     except requests.exceptions.RequestException:
-        print("Warning: Failed to retrieve data from the https://multiomics.rtx.ai:9990/PharmacogenomicsKG")
+        logger.warning("Failed to retrieve data from %s", "https://multiomics.rtx.ai:9990/PharmacogenomicsKG")
 
     
 
@@ -187,9 +191,9 @@ def add_plover_API(APInames:dict[str, str], metaKG:pd.DataFrame) -> tuple[dict[s
             for i in range(len(data["edges"])):
                 APInames, metaKG = add_new_API_for_query(APInames, metaKG, "Clinical Trials KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/ctkp/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
         else:
-            print("Warning: Failed to retrieve data from the https://multiomics.rtx.ai:9990/ctkp. Status code:", response.status_code)
+            logger.warning("Failed to retrieve data from %s. Status code: %s", "https://multiomics.rtx.ai:9990/ctkp", response.status_code)
     except requests.exceptions.RequestException:
-        print("Warning: Failed to retrieve data from the https://multiomics.rtx.ai:9990/ctkp")
+        logger.warning("Failed to retrieve data from %s", "https://multiomics.rtx.ai:9990/ctkp")
 
     
 
@@ -201,9 +205,9 @@ def add_plover_API(APInames:dict[str, str], metaKG:pd.DataFrame) -> tuple[dict[s
             for i in range(len(data["edges"])):
                 APInames, metaKG = add_new_API_for_query(APInames, metaKG, "Drug Approvals KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/dakp/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
         else:
-            print("Warning: Failed to retrieve data from the https://multiomics.rtx.ai:9990/dakp. Status code:", response.status_code)
+            logger.warning("Failed to retrieve data from %s. Status code: %s", "https://multiomics.rtx.ai:9990/dakp", response.status_code)
     except requests.exceptions.RequestException:
-        print("Warning: Failed to retrieve data from the https://multiomics.rtx.ai:9990/dakp")
+        logger.warning("Failed to retrieve data from %s", "https://multiomics.rtx.ai:9990/dakp")
     
     
     url = 'https://multiomics.rtx.ai:9990/mokp/meta_knowledge_graph'
@@ -214,9 +218,9 @@ def add_plover_API(APInames:dict[str, str], metaKG:pd.DataFrame) -> tuple[dict[s
             for i in range(len(data["edges"])):
                 APInames, metaKG = add_new_API_for_query(APInames, metaKG, "Multiomics KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/multiomics/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
         else:
-            print("Warning: Failed to retrieve data from the https://multiomics.rtx.ai:9990/mokp. Status code:", response.status_code)
+            logger.warning("Failed to retrieve data from %s. Status code: %s", "https://multiomics.rtx.ai:9990/mokp", response.status_code)
     except requests.exceptions.RequestException:
-        print("Warning: Failed to retrieve data from the https://multiomics.rtx.ai:9990/mokp")
+        logger.warning("Failed to retrieve data from %s", "https://multiomics.rtx.ai:9990/mokp")
     
     url = 'https://multiomics.rtx.ai:9990/mbkp/meta_knowledge_graph'
     try:
@@ -226,9 +230,9 @@ def add_plover_API(APInames:dict[str, str], metaKG:pd.DataFrame) -> tuple[dict[s
             for i in range(len(data["edges"])):
                 APInames, metaKG = add_new_API_for_query(APInames, metaKG, "Microbiome KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/mbkp/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
         else:
-            print("Warning: Failed to retrieve data from the https://multiomics.rtx.ai:9990/mbkp. Status code:", response.status_code)
+            logger.warning("Failed to retrieve data from %s. Status code: %s", "https://multiomics.rtx.ai:9990/mbkp", response.status_code)
     except requests.exceptions.RequestException:
-        print("Warning: Failed to retrieve data from the https://multiomics.rtx.ai:9990/mbkp")
+        logger.warning("Failed to retrieve data from %s", "https://multiomics.rtx.ai:9990/mbkp")
     
 
     url = 'https://kg2cploverdb.ci.transltr.io/meta_knowledge_graph'
@@ -239,9 +243,9 @@ def add_plover_API(APInames:dict[str, str], metaKG:pd.DataFrame) -> tuple[dict[s
             for i in range(len(data["edges"])):
                 APInames, metaKG = add_new_API_for_query(APInames, metaKG, "RTX KG2 - TRAPI 1.5.0", "https://kg2cploverdb.ci.transltr.io/kg2c/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
         else:
-            print("Warning: Failed to retrieve data from the https://kg2cploverdb.ci.transltr.io. Status code:", response.status_code)
+            logger.warning("Failed to retrieve data from %s. Status code: %s", "https://kg2cploverdb.ci.transltr.io", response.status_code)
     except requests.exceptions.RequestException:
-        print("Warning: Failed to retrieve data from the https://kg2cploverdb.ci.transltr.io")
+        logger.warning("Failed to retrieve data from %s", "https://kg2cploverdb.ci.transltr.io")
 
     return APInames, metaKG
 

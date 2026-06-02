@@ -3,11 +3,14 @@ This is a wrapper around the Node Normalizer API.
 
 API docs: https://nodenorm.transltr.io/docs
 """
+import logging
 import urllib.parse
 
 import requests
 
 from .translator_node import TranslatorNode
+
+logger = logging.getLogger(__name__)
 
 
 URL = 'https://nodenorm.ci.transltr.io/'
@@ -125,11 +128,11 @@ def get_preferred_names(id_list:list[str], batch_limit=500, **kwargs) -> dict[st
             else:
                 label = normalized_nodes[curie].label
                 if label is None:
-                    print(curie + ": no preferred name")
+                    logger.debug("%s: no preferred name", curie)
                     label = curie
                 name_map[curie] = label
     if len(unmapped_ids) > 0:
-        print("NodeNorm does not know about these identifiers: " + ",".join(unmapped_ids))
+        logger.info("NodeNorm does not know about these identifiers: %s", ",".join(unmapped_ids))
     return name_map
 
 
@@ -181,13 +184,13 @@ def ID_convert_to_preferred_name_nodeNormalizer(id_list):
                 label = identifier.get('label')
                 dic_id_map[curie] = label
                 if not label:
-                    print(curie + ": no preferred name")
+                    logger.debug("%s: no preferred name", curie)
                     dic_id_map[curie] = curie
             else:
                 unrecoglized_ids.append(curie)
 
                 dic_id_map[curie] = curie
     if len(unrecoglized_ids) > 0:
-        print("NodeNorm does not know about these identifiers: " + ",".join(unrecoglized_ids))
+        logger.info("NodeNorm does not know about these identifiers: %s", ",".join(unrecoglized_ids))
 
     return dic_id_map

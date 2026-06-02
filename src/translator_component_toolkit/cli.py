@@ -15,7 +15,16 @@ import sys
 from typing import Any
 
 import click
+import requests
 
+from .errors import InvalidParameterError
+from .io import (
+    EXIT_NOT_FOUND,
+    EXIT_UNEXPECTED,
+    EXIT_UPSTREAM,
+    EXIT_USAGE,
+    serialize,
+)
 from .schema import REGISTRY, ParamSpec, ToolSpec, make_signed_callable
 
 
@@ -42,12 +51,19 @@ def _json_callback(ctx, param, value):
         raise click.BadParameter(f"{param.name} must be valid JSON: {e}") from e
 
 
-def _echo_result(result: Any) -> None:
-    """Best-effort rendering of a tool result as JSON (refined in a later PR)."""
-    try:
-        click.echo(json.dumps(result, indent=2, default=str))
-    except TypeError:
-        click.echo(str(result))
+def _echo_result(result: Any, as_json: bool) -> None:
+    """Write a normalized tool result to stdout.
+
+    ``serialize`` flattens dataclasses/DataFrames/tuples into JSON-safe
+    primitives. With ``--json`` (the default) the result is emitted as JSON;
+    with ``--no-json`` the serialized structure is printed in its Python repr
+    for quick human scanning.
+    """
+    normalized = serialize(result)
+    if as_json:
+        click.echo(json.dumps(normalized, indent=2, default=str))
+    else:
+        click.echo(str(normalized))
 
 
 def _build_command(spec: ToolSpec) -> click.Command:
@@ -76,15 +92,26 @@ def _build_command(spec: ToolSpec) -> click.Command:
                     click.option(f"--{flag}", _dest(p), type=click_type, default=p.default, help=p.help)
                 )
 
-    def callback(**kwargs):
+    @click.pass_context
+    def callback(ctx, **kwargs):
         # Map click destinations back to the spec parameter names.
         call_kwargs = {p.name: kwargs.get(_dest(p)) for p in spec.params}
+        as_json = ctx.obj.get("json", True) if ctx.obj else True
         try:
             result = callable_(**call_kwargs)
+        except InvalidParameterError as e:
+            click.echo(f"Error: {e}", err=True)
+            sys.exit(EXIT_USAGE)
+        except LookupError as e:
+            click.echo(f"Error: {e}", err=True)
+            sys.exit(EXIT_NOT_FOUND)
+        except requests.RequestException as e:
+            click.echo(f"Error: upstream request failed: {e}", err=True)
+            sys.exit(EXIT_UPSTREAM)
         except Exception as e:  # noqa: BLE001 - surfaced to the user
             click.echo(f"Error: {e}", err=True)
-            sys.exit(1)
-        _echo_result(result)
+            sys.exit(EXIT_UNEXPECTED)
+        _echo_result(result, as_json)
 
     command_name = spec.name.replace("_", "-")
     cmd = click.command(name=command_name, help=spec.summary)(callback)
@@ -95,8 +122,17 @@ def _build_command(spec: ToolSpec) -> click.Command:
 
 @click.group()
 @click.version_option()
-def main():
-    """Translator Component Toolkit - biomedical knowledge graph tools."""
+@click.option("--json/--no-json", "as_json", default=True,
+              help="Emit machine-readable JSON to stdout (default) or a plain repr.")
+@click.pass_context
+def main(ctx, as_json: bool):
+    """Translator Component Toolkit - biomedical knowledge graph tools.
+
+    Data is written to stdout; diagnostics go to stderr. Exit codes: 0 success,
+    2 usage/invalid parameter, 3 not found, 4 upstream API error, 1 unexpected.
+    """
+    ctx.ensure_object(dict)
+    ctx.obj["json"] = as_json
 
 
 # Build one group per ToolSpec.group and attach generated commands.
