@@ -5,7 +5,7 @@ from . import translator_metakg
 from . import translator_kpinfo
 
 
-def get_translator_API_predicates() -> (dict, pandas.DataFrame, dict):
+def get_translator_API_predicates() -> tuple[dict, pandas.DataFrame, dict]:
     '''
     Get the predicates supported by each API.
 
@@ -22,7 +22,7 @@ def get_translator_API_predicates() -> (dict, pandas.DataFrame, dict):
 
     Examples
     --------
-    >>> API_predicates = get_translator_API_predicates()
+    >>> API_names, metaKG, API_predicates = get_translator_API_predicates()
     '''
     Translator_KP_info,APInames= translator_kpinfo.get_translator_kp_info()
     print(len(Translator_KP_info))
@@ -33,8 +33,8 @@ def get_translator_API_predicates() -> (dict, pandas.DataFrame, dict):
     APInames,metaKG = translator_metakg.add_plover_API(APInames, metaKG)
     print(metaKG.shape)
     # Step 3: list metaKG information
-    All_predicates = list(set(metaKG['Predicate']))
-    All_categories = list((set(list(set(metaKG['Subject']))+list(set(metaKG['Object'])))))
+    # All_predicates = list(set(metaKG['Predicate']))  # Unused variable
+    # All_categories = list((set(list(set(metaKG['Subject']))+list(set(metaKG['Object'])))))  # Unused variable
     API_withMetaKG = list(set(metaKG['API']))
 
     # generate a dictionary of API and its predicates
@@ -43,6 +43,90 @@ def get_translator_API_predicates() -> (dict, pandas.DataFrame, dict):
         API_predicates[api] = list(set(metaKG[metaKG['API'] == api]['Predicate']))
 
     return APInames, metaKG, API_predicates
+
+
+def build_attribute_constraint(attribute_id, operator, value, name=None, is_not=False):
+    """
+    This creates an attribute constraint for a TRAPI query dict.
+    """
+    if name is None:
+        name = ''
+    output = {
+            'id': attribute_id,
+            'operator': operator,
+            'value': value,
+            'name': name
+            }
+    if is_not:
+        output['not'] = True
+    return output
+
+
+def format_query_json(subject_ids:list[str],
+        object_ids:list[str]|None = None,
+        subject_categories:list[str]|None = None,
+        object_categories:list[str]|None = None,
+        predicates:list[str]|None = None,
+        attribute_constraints:list[dict]|None = None,
+        ) -> dict:
+    '''
+    Formats a query dict, with optional constraints.
+
+    Example input:
+    subject_ids = ["NCBIGene:3845"]
+    object_ids = []
+    subject_categories = ["biolink:Gene"]
+    object_categories = ["biolink:Gene"]
+    predicates = ["biolink:positively_correlated_with", "biolink:physically_interacts_with"]
+    attribute_constraints = [build_attribute_constraint('biolink:has_total', '>', 2)]
+    '''
+    #edited Dec 5, 2023
+    query_json_temp = {
+        "message": {
+            "query_graph": {
+
+                "edges": {
+                    "e00": {
+                    #"e1": {
+                        "subject": "n01",
+                        "object": "n00",
+                        "predicates": predicates
+                        }
+                    },
+                "nodes": {
+                    "n00": {
+                        "ids":subject_ids, # required
+                        #"categories":[] # optional, if not provided, it will be empty
+                        },
+                    "n01": {
+                        #"ids":[],
+                        "categories":[] # required
+                        }}
+                }
+            }
+        }
+
+    if attribute_constraints is not None and len(attribute_constraints) > 0:
+        query_json_temp['message']['query_graph']['edges']['attribute_constraints'] = attribute_constraints
+
+    if subject_ids is not None and len(subject_ids) > 0:
+        query_json_temp["message"]["query_graph"]["nodes"]["n00"]["ids"] = subject_ids
+
+    if object_ids is not None and len(object_ids) > 0:
+        query_json_temp["message"]["query_graph"]["nodes"]["n01"]["ids"] = object_ids
+
+    if subject_categories is not None and len(subject_categories) > 0:
+        query_json_temp["message"]["query_graph"]["nodes"]["n01"]["categories"] = subject_categories
+
+    if object_categories is not None and len(object_categories) > 0:
+        query_json_temp["message"]["query_graph"]["nodes"]["n01"]["categories"] = object_categories
+
+    if predicates is not None and len(predicates) > 0:
+        query_json_temp["message"]["query_graph"]["edges"]["e00"]["predicates"] = predicates
+
+    return query_json_temp
+
+
 
 def optimize_query_json(query_json, API_name_cur, API_predicates):
     '''
@@ -128,6 +212,7 @@ def parallel_api_query(query_json, select_APIs, APInames, API_predicates,max_wor
     '''
     # Parallel query
     result = []
+    no_results_returned = []
     from concurrent.futures import ThreadPoolExecutor, as_completed
     from copy import deepcopy
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -142,7 +227,8 @@ def parallel_api_query(query_json, select_APIs, APInames, API_predicates,max_wor
                 if 'knowledge_graph' in data:
                     result.append(data)
             except Exception as exc:
-                print('%r generated an exception: %s' % (url, exc))
+                no_results_returned.append(url)
+                #print('%r generated an exception: %s' % (url, exc))
     
     included_KP_ID = []
     for i in range(0,len(result)):

@@ -8,7 +8,7 @@ import pandas as pd
 """This is the root URL for the resource."""
 URL = 'https://smart-api.info/api/query?q=tags.name:translator'
 
-def get_translator_kp_info() -> (pd.DataFrame, dict[str, str]):
+def get_translator_kp_info() -> tuple[pd.DataFrame, dict[str, str]]:
     """
     Get the SmartAPI Translator KP info from the smart-api.info API.
     Returns a DataFrame with the SmartAPI Translator KP info.
@@ -27,8 +27,6 @@ def get_translator_kp_info() -> (pd.DataFrame, dict[str, str]):
     >>> Translator_KP_info, APInames = get_translator_kp_info()
     >>> print(Translator_KP_info.head())
     """
-    
-
     # Get x-bte smartapi specs
     url = "https://smart-api.info/api/query?q=tags.name:translator AND tags.name:trapi&size=1000&sort=_seq_no&raw=1&fields=paths,servers,tags,components.x-bte*,info,_meta"
     response = requests.get(url)

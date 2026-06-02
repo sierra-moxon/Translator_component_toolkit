@@ -5,7 +5,7 @@ import pandas as pd
 
 def find_link(name):
     #pre = "https://dev.smart-api.info/api/metakg/consolidated?size=2000&q=%28api.x-translator.component%3AKP+AND+api.name%3A" # This works for the previous version
-    pre = "https://smart-api.info/api/metakg/consolidated?size=2000&q=%28api.x-translator.component%3AKP+AND+api.name%3A" 
+    pre = "https://smart-api.info/api/metakg/consolidated?size=5000&q=%28api.x-translator.component%3AKP+AND+api.name%3A" 
     end = "%5C%28Trapi+v1.5.0%5C%29%29"
     if '(Trapi v1.5.0)' in name:
         url = pre
@@ -30,6 +30,7 @@ def find_link(name):
         url = url+words[length-1]+"%29"
     return(url)
 
+
 def get_KP_metadata(APInames:dict[str, str]) -> pd.DataFrame:
     '''
     This function is used to get the metadata of the KPs in the APInames dictionary.
@@ -53,7 +54,6 @@ def get_KP_metadata(APInames:dict[str, str]) -> pd.DataFrame:
 
     result_df = pd.DataFrame()
     API_list = []
-    URL_list = []
     Predicate_list = []
     subject_list = []
     object_list = []
@@ -121,7 +121,7 @@ def add_new_API_for_query(APInames:dict[str, str], metaKG:pd.DataFrame, newAPIna
     return APInames, metaKG
 
 
-def add_plover_API(APInames:dict[str, str], metaKG:pd.DataFrame):
+def add_plover_API(APInames:dict[str, str], metaKG:pd.DataFrame) -> tuple[dict[str, str], pd.DataFrame]:
     '''
     This function is used to add the Plover APIs developed by the CATRAX team to the APInames and metaKG.
 
@@ -134,6 +134,8 @@ def add_plover_API(APInames:dict[str, str], metaKG:pd.DataFrame):
     Microbiome, 
     and RTX KG2.
 
+    If an API endpoint is not available (i.e. returns a non-200 return code), then the API will not be included.
+
     Parameters
     ----------
     APInames : dict
@@ -142,60 +144,120 @@ def add_plover_API(APInames:dict[str, str], metaKG:pd.DataFrame):
     metaKG : pandas.DataFrame
         This is the output of `get_kp_metadata`.
 
-
-
-
     Examples
     --------
     >>> APInames, metaKG = add_plover_API(APInames, metaKG)
     '''
-    
-
     import requests
     url = 'https://multiomics.rtx.ai:9990/BigGIM_DrugResponse_PerformancePhase/meta_knowledge_graph'
-    response = requests.get(url)
-    data = response.json()
-    for i in range(len(data["edges"])):
-        APInames, metaKG = add_new_API_for_query(APInames, metaKG, "CATRAX BigGIM DrugResponse Performance Phase KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/BigGIM_DrugResponse_PerformancePhase/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
-
-    url = 'https://multiomics.rtx.ai:9990/PharmacogenomicsKG/meta_knowledge_graph'
-    response = requests.get(url)
-    data = response.json()
-    for i in range(len(data["edges"])):
-        APInames, metaKG = add_new_API_for_query(APInames, metaKG, "CATRAX Pharmacogenomics KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/PharmacogenomicsKG/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
-
-    url = 'https://multiomics.rtx.ai:9990/ctkp/meta_knowledge_graph'
-    response = requests.get(url)
-    data = response.json()
-    for i in range(len(data["edges"])):
-        APInames, metaKG = add_new_API_for_query(APInames, metaKG, "Clinical Trials KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/ctkp/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
-
-    url = 'https://multiomics.rtx.ai:9990/dakp/meta_knowledge_graph'
-    response = requests.get(url)
-    data = response.json()
-    for i in range(len(data["edges"])):
-        APInames, metaKG = add_new_API_for_query(APInames, metaKG, "Drug Approvals KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/dakp/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
-
-    url = 'https://multiomics.rtx.ai:9990/mokp/meta_knowledge_graph'
-    response = requests.get(url)
-    data = response.json()
-    for i in range(len(data["edges"])):
-        APInames, metaKG = add_new_API_for_query(APInames, metaKG, "Multiomics KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/multiomics/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
-
-    url = 'https://multiomics.rtx.ai:9990/mbkp/meta_knowledge_graph'
-    response = requests.get(url)
-    data = response.json()
-    for i in range(len(data["edges"])):
-        APInames, metaKG = add_new_API_for_query(APInames, metaKG, "Microbiome KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/mbkp/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
+    try:
+        response = requests.get(url, timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            for i in range(len(data["edges"])):
+                APInames, metaKG = add_new_API_for_query(APInames, metaKG, "CATRAX BigGIM DrugResponse Performance Phase KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/BigGIM_DrugResponse_PerformancePhase/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
+        else:
+            print("Warning: Failed to retrieve data from the https://multiomics.rtx.ai:9990/BigGIM_DrugResponse_PerformancePhase. Status code:", response.status_code)
 
 
-    url = 'https://kg2cploverdb.ci.transltr.io/kg2c/meta_knowledge_graph'
-    response = requests.get(url)
-    data = response.json()
-    for i in range(len(data["edges"])):
-        APInames, metaKG = add_new_API_for_query(APInames, metaKG, "RTX KG2 - TRAPI 1.5.0", "https://kg2cploverdb.ci.transltr.io/kg2c/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
+    except requests.exceptions.RequestException:
+        print("Warning: Failed to retrieve data from the https://multiomics.rtx.ai:9990/BigGIM_DrugResponse_PerformancePhase")
+
 
     
+    url = 'https://multiomics.rtx.ai:9990/PharmacogenomicsKG/meta_knowledge_graph'
+    try: 
+        response = requests.get(url)
+        if response.status_code == 200:
+            data = response.json()
+            for i in range(len(data["edges"])):
+                APInames, metaKG = add_new_API_for_query(APInames, metaKG, "CATRAX Pharmacogenomics KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/PharmacogenomicsKG/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
+        else:
+            print("Warning: Failed to retrieve data from the https://multiomics.rtx.ai:9990/PharmacogenomicsKG. Status code:", response.status_code)
+    except requests.exceptions.RequestException:
+        print("Warning: Failed to retrieve data from the https://multiomics.rtx.ai:9990/PharmacogenomicsKG")
+
+    
+
+    url = 'https://multiomics.rtx.ai:9990/ctkp/meta_knowledge_graph'
+    try: 
+        response = requests.get(url)
+        if response.status_code == 200:
+            data = response.json()
+            for i in range(len(data["edges"])):
+                APInames, metaKG = add_new_API_for_query(APInames, metaKG, "Clinical Trials KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/ctkp/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
+        else:
+            print("Warning: Failed to retrieve data from the https://multiomics.rtx.ai:9990/ctkp. Status code:", response.status_code)
+    except requests.exceptions.RequestException:
+        print("Warning: Failed to retrieve data from the https://multiomics.rtx.ai:9990/ctkp")
+
+    
+
+    url = 'https://multiomics.rtx.ai:9990/dakp/meta_knowledge_graph'
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            data = response.json()
+            for i in range(len(data["edges"])):
+                APInames, metaKG = add_new_API_for_query(APInames, metaKG, "Drug Approvals KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/dakp/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
+        else:
+            print("Warning: Failed to retrieve data from the https://multiomics.rtx.ai:9990/dakp. Status code:", response.status_code)
+    except requests.exceptions.RequestException:
+        print("Warning: Failed to retrieve data from the https://multiomics.rtx.ai:9990/dakp")
+    
+    
+    url = 'https://multiomics.rtx.ai:9990/mokp/meta_knowledge_graph'
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            data = response.json()
+            for i in range(len(data["edges"])):
+                APInames, metaKG = add_new_API_for_query(APInames, metaKG, "Multiomics KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/multiomics/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
+        else:
+            print("Warning: Failed to retrieve data from the https://multiomics.rtx.ai:9990/mokp. Status code:", response.status_code)
+    except requests.exceptions.RequestException:
+        print("Warning: Failed to retrieve data from the https://multiomics.rtx.ai:9990/mokp")
+    
+    url = 'https://multiomics.rtx.ai:9990/mbkp/meta_knowledge_graph'
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            data = response.json()
+            for i in range(len(data["edges"])):
+                APInames, metaKG = add_new_API_for_query(APInames, metaKG, "Microbiome KP - TRAPI 1.5.0", "https://multiomics.rtx.ai:9990/mbkp/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
+        else:
+            print("Warning: Failed to retrieve data from the https://multiomics.rtx.ai:9990/mbkp. Status code:", response.status_code)
+    except requests.exceptions.RequestException:
+        print("Warning: Failed to retrieve data from the https://multiomics.rtx.ai:9990/mbkp")
+    
+
+    url = 'https://kg2cploverdb.ci.transltr.io/meta_knowledge_graph'
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            data = response.json()
+            for i in range(len(data["edges"])):
+                APInames, metaKG = add_new_API_for_query(APInames, metaKG, "RTX KG2 - TRAPI 1.5.0", "https://kg2cploverdb.ci.transltr.io/kg2c/query", data["edges"][i]['predicate'], data["edges"][i]['subject'], data["edges"][i]['object'])
+        else:
+            print("Warning: Failed to retrieve data from the https://kg2cploverdb.ci.transltr.io. Status code:", response.status_code)
+    except requests.exceptions.RequestException:
+        print("Warning: Failed to retrieve data from the https://kg2cploverdb.ci.transltr.io")
+
     return APInames, metaKG
 
+def load_translator_resources():
+    """
+    Load the necessary resources for the Translator.
 
+    Returns
+    -------
+    APInames
+    metaKG
+    Translator_KP_info
+    """
+    from .translator_kpinfo import get_translator_kp_info
+    Translator_KP_info, APInames = get_translator_kp_info()
+    metaKG = get_KP_metadata(APInames)
+  
+    APInames, metaKG = add_plover_API(APInames, metaKG)
+    return  APInames, metaKG, Translator_KP_info

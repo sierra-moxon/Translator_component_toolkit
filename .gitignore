@@ -10,4 +10,14 @@ __pycache__
 *.egg
 *.log
 .claude/
+*.png
+.pypirc
+
 .idea/
+.coverage/
+htmlcov/
+coverage.xml
+.coverage
+
+temp
+notebooks/PathFinder_testing_results/
