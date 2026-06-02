@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from . import name_resolver, node_normalizer, translator_kpinfo, translator_metakg, translator_query, trapi
+from .errors import validate_choice
 
 
 @dataclass(frozen=True)
@@ -167,10 +168,12 @@ def _get_api_predicates() -> Any:
 
 
 def _optimize_query_for_api(query_json: dict, api_name: str, api_predicates: dict) -> Any:
+    validate_choice(api_name, api_predicates.keys(), "api_name")
     return translator_query.optimize_query_json(query_json, api_name, api_predicates)
 
 
 def _query_knowledge_provider(api_name: str, query_json: dict, api_names: dict, api_predicates: dict) -> Any:
+    validate_choice(api_name, api_names.keys(), "api_name")
     return translator_query.query_KP(api_name, query_json, api_names, api_predicates)
 
 
