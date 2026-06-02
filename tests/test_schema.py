@@ -1,0 +1,86 @@
+"""Tests for the schema-first tool registry."""
+
+import inspect
+
+from translator_component_toolkit.schema import (
+    REGISTRY,
+    ParamSpec,
+    ToolSpec,
+    all_names,
+    make_signed_callable,
+)
+
+EXPECTED_NAMES = {
+    "name_lookup",
+    "get_name_synonyms",
+    "batch_name_lookup",
+    "normalize_nodes",
+    "get_kp_info",
+    "get_metakg_data",
+    "add_custom_api_to_metakg",
+    "add_plover_apis_to_metakg",
+    "get_api_predicates",
+    "optimize_query_for_api",
+    "query_knowledge_provider",
+    "parallel_query_apis",
+    "trapi_query_endpoint",
+}
+
+
+def test_registry_is_populated():
+    assert len(REGISTRY) >= 13
+    assert all(isinstance(spec, ToolSpec) for spec in REGISTRY)
+
+
+def test_registry_covers_expected_tools():
+    assert {spec.name for spec in REGISTRY} == EXPECTED_NAMES
+
+
+def test_names_are_unique_across_canonical_and_aliases():
+    names = all_names()
+    assert len(names) == len(set(names)), "duplicate tool name or alias detected"
+
+
+def test_every_func_is_callable():
+    for spec in REGISTRY:
+        assert callable(spec.func), f"{spec.name} func is not callable"
+
+
+def test_every_param_is_a_paramspec_with_help():
+    for spec in REGISTRY:
+        for p in spec.params:
+            assert isinstance(p, ParamSpec)
+            assert p.help, f"{spec.name}.{p.name} is missing help text"
+
+
+def test_summary_is_one_concise_line():
+    for spec in REGISTRY:
+        assert spec.summary
+        assert "\n" not in spec.summary
+
+
+def test_signed_callable_matches_paramspecs():
+    for spec in REGISTRY:
+        signed = make_signed_callable(spec)
+        sig = inspect.signature(signed)
+        assert list(sig.parameters) == [p.name for p in spec.params]
+        for p in spec.params:
+            param = sig.parameters[p.name]
+            if p.required:
+                assert param.default is inspect.Parameter.empty
+            else:
+                assert param.default == p.default
+
+
+def test_signed_callable_binds_and_delegates():
+    captured = {}
+
+    spec = ToolSpec(
+        name="demo",
+        summary="demo",
+        func=lambda a, b=2: captured.update(a=a, b=b),
+        params=[ParamSpec("a", int, required=True, help="a"), ParamSpec("b", int, default=2, help="b")],
+    )
+    signed = make_signed_callable(spec)
+    signed(1)
+    assert captured == {"a": 1, "b": 2}
