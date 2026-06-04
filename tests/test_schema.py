@@ -2,6 +2,10 @@
 
 import inspect
 
+import pytest
+
+from translator_component_toolkit import schema
+from translator_component_toolkit.errors import InvalidParameterError
 from translator_component_toolkit.schema import (
     REGISTRY,
     ParamSpec,
@@ -149,3 +153,62 @@ def test_get_metakg_returns_envelope_when_limited(monkeypatch):
     assert result["returned"] == 2
     assert result["truncated"] is True
     assert result["next_offset"] == 2
+
+
+# ---------------------------------------------------------------------------
+# Read-path reshape: catalog-derivable params are optional (issue #16).
+# ---------------------------------------------------------------------------
+
+CATALOG_OPTIONAL = {
+    "get_metakg": {"api_names"},
+    "optimize_query": {"api_predicates"},
+    "query_kp": {"api_names", "api_predicates"},
+    "query_kps_parallel": {"api_names", "api_predicates"},
+}
+
+
+def _query_with_predicates(predicates):
+    """Minimal TRAPI query carrying the given edge predicates."""
+    return {"message": {"query_graph": {"edges": {"e00": {"predicates": list(predicates)}}}}}
+
+
+def test_catalog_derivable_params_are_optional():
+    by_name = {spec.name: spec for spec in REGISTRY}
+    for tool, optional_params in CATALOG_OPTIONAL.items():
+        params = {p.name: p for p in by_name[tool].params}
+        for name in optional_params:
+            assert not params[name].required, f"{tool}.{name} should be optional"
+            assert params[name].default is None, f"{tool}.{name} should default to None"
+
+
+def test_get_metakg_uses_catalog_when_api_names_omitted(seeded_catalog):
+    result = schema._get_metakg_data()  # no api_names -> cached MetaKG
+    assert result is seeded_catalog.metakg
+
+
+def test_optimize_query_resolves_predicates_from_catalog(seeded_catalog):
+    # api_predicates omitted -> resolved from the catalog; the supported
+    # predicate is kept and the unsupported one is dropped.
+    query = _query_with_predicates(["biolink:related_to", "biolink:unsupported"])
+    result = schema._optimize_query_for_api(query, "API X")
+    assert result["message"]["query_graph"]["edges"]["e00"]["predicates"] == ["biolink:related_to"]
+
+
+def test_optimize_query_unknown_api_validates_against_catalog(seeded_catalog):
+    query = _query_with_predicates(["biolink:related_to"])
+    with pytest.raises(InvalidParameterError):
+        schema._optimize_query_for_api(query, "Unknown API")
+
+
+def test_query_kp_resolves_api_names_from_catalog(empty_catalog):
+    # api_names omitted -> resolved from the (empty) catalog, so validation of
+    # an unknown api_name fails before any network call is attempted.
+    with pytest.raises(InvalidParameterError):
+        schema._query_knowledge_provider("Unknown", {})
+
+
+def test_query_kp_explicit_api_names_override_catalog(seeded_catalog):
+    # Explicit (empty) api_names are used instead of the seeded catalog, so the
+    # known "API X" is rejected.
+    with pytest.raises(InvalidParameterError):
+        schema._query_knowledge_provider("API X", {}, api_names={})
