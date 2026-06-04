@@ -112,3 +112,40 @@ def test_signed_callable_binds_and_delegates():
     signed = make_signed_callable(spec)
     signed(1)
     assert captured == {"a": 1, "b": 2}
+
+
+def test_paginated_tools_expose_limit_and_offset():
+    for spec in REGISTRY:
+        if spec.paginated:
+            names = {p.name for p in spec.params}
+            assert {"limit", "offset"} <= names, f"{spec.name} paginated but missing limit/offset"
+
+
+def test_get_metakg_is_paginated():
+    by_name = {spec.name: spec for spec in REGISTRY}
+    assert by_name["get_metakg"].paginated is True
+
+
+def test_get_metakg_returns_raw_when_unbounded(monkeypatch):
+    import pandas as pd
+
+    from translator_component_toolkit import schema, translator_metakg
+
+    df = pd.DataFrame({"API": ["x", "y"], "Predicate": ["p", "q"]})
+    monkeypatch.setattr(translator_metakg, "get_KP_metadata", lambda api_names: df)
+    result = schema._get_metakg_data({"x": "http://x"})
+    assert result is df  # unchanged shape preserves chaining
+
+
+def test_get_metakg_returns_envelope_when_limited(monkeypatch):
+    import pandas as pd
+
+    from translator_component_toolkit import schema, translator_metakg
+
+    df = pd.DataFrame({"API": ["x", "y", "z"]})
+    monkeypatch.setattr(translator_metakg, "get_KP_metadata", lambda api_names: df)
+    result = schema._get_metakg_data({"x": "http://x"}, limit=2)
+    assert result["total"] == 3
+    assert result["returned"] == 2
+    assert result["truncated"] is True
+    assert result["next_offset"] == 2

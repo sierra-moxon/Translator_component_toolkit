@@ -21,6 +21,7 @@ from typing import Any
 
 from . import name_resolver, node_normalizer, translator_kpinfo, translator_metakg, translator_query, trapi
 from .errors import validate_choice
+from .io import paginate
 
 
 @dataclass(frozen=True)
@@ -72,6 +73,9 @@ class ToolSpec:
         CLI command group (e.g. ``name``, ``query``).
     output_hint : str | None
         Optional note about the return shape.
+    paginated : bool
+        Whether the tool accepts ``limit``/``offset`` and returns a bounded
+        response envelope (see :func:`io.paginate`).
     """
 
     name: str
@@ -81,6 +85,7 @@ class ToolSpec:
     aliases: list[str] = field(default_factory=list)
     group: str = "misc"
     output_hint: str | None = None
+    paginated: bool = False
 
 
 def make_signed_callable(spec: ToolSpec) -> Callable[..., Any]:
@@ -148,8 +153,13 @@ def _get_kp_info() -> Any:
     return translator_kpinfo.get_translator_kp_info()
 
 
-def _get_metakg_data(api_names: dict) -> Any:
-    return translator_metakg.get_KP_metadata(api_names)
+def _get_metakg_data(api_names: dict, limit: int | None = None, offset: int = 0) -> Any:
+    result = translator_metakg.get_KP_metadata(api_names)
+    # Preserve the raw DataFrame when unbounded so downstream tools (e.g.
+    # add_metakg_api) can keep chaining on it; otherwise return an envelope.
+    if limit is None and offset == 0:
+        return result
+    return paginate(result, limit, offset)
 
 
 def _add_custom_api_to_metakg(api_names: dict, metakg_df: Any, new_api_name: str, new_api_url: str,
@@ -255,8 +265,14 @@ REGISTRY: list[ToolSpec] = [
         summary="Get MetaKG metadata (predicates, subjects, objects) for Knowledge Providers.",
         func=_get_metakg_data,
         group="metakg",
-        params=[ParamSpec("api_names", dict, required=True, help="Dictionary mapping API names to URLs.")],
-        output_hint="DataFrame",
+        paginated=True,
+        params=[
+            ParamSpec("api_names", dict, required=True, help="Dictionary mapping API names to URLs."),
+            ParamSpec("limit", int, default=None,
+                      help="Max rows to return; omit for the full DataFrame (chainable)."),
+            ParamSpec("offset", int, default=0, help="Row offset when paginating."),
+        ],
+        output_hint="DataFrame, or bounded envelope {data, total, returned, truncated, next_offset} when limit/offset given",
     ),
     ToolSpec(
         name="add_metakg_api",
