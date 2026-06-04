@@ -8,6 +8,7 @@ import urllib.parse
 
 import requests
 
+from . import config
 from .translator_node import TranslatorNode
 
 logger = logging.getLogger(__name__)
@@ -19,7 +20,7 @@ def status():
     """
     Returns the status of the Node Normalizer API.
     """
-    response = requests.get(f'{URL}status')
+    response = requests.get(f'{URL}status', timeout=config.http_timeout())
     response.raise_for_status()
     return response.json()
 
@@ -61,9 +62,9 @@ def get_normalized_nodes(query: str | list[str],
             json_query = [query]
         else:
             json_query = query
-        response = requests.post(path, json={'curies': json_query, **kwargs})
+        response = requests.post(path, json={'curies': json_query, **kwargs}, timeout=config.http_timeout())
     else:
-        response = requests.get(path, params={'curie': query, **kwargs})
+        response = requests.get(path, params={'curie': query, **kwargs}, timeout=config.http_timeout())
     if response.status_code == 200:
         result = response.json()
         normalized_dict = {}
@@ -168,7 +169,7 @@ def ID_convert_to_preferred_name_nodeNormalizer(id_list):
             "description": False,   # Change to True if you want descriptions from any identifiers we know about.
             "conflate": NODENORM_GENE_PROTEIN_CONFLATION,
             "drug_chemical_conflate": NODENORM_DRUG_CHEMICAL_CONFLATION,
-        })
+        }, timeout=config.http_timeout())
         if not response.ok:
             raise RuntimeError("Error: NodeNorm request failed with status code " + str(response.status_code))
 

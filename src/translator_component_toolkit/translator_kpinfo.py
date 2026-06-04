@@ -7,6 +7,8 @@ import requests
 import json
 import pandas as pd
 
+from . import config
+
 logger = logging.getLogger(__name__)
 
 """This is the root URL for the resource."""
@@ -33,7 +35,7 @@ def get_translator_kp_info() -> tuple[pd.DataFrame, dict[str, str]]:
     """
     # Get x-bte smartapi specs
     url = "https://smart-api.info/api/query?q=tags.name:translator AND tags.name:trapi&size=1000&sort=_seq_no&raw=1&fields=paths,servers,tags,components.x-bte*,info,_meta"
-    response = requests.get(url)
+    response = requests.get(url, timeout=config.http_timeout())
     try:
         response.raise_for_status()
     except requests.RequestException as e:

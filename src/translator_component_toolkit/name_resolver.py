@@ -7,6 +7,7 @@ import urllib.parse
 
 import requests
 
+from . import config
 from .translator_node import TranslatorNode
 
 URL = 'https://name-lookup.ci.transltr.io/'
@@ -16,7 +17,7 @@ def status():
     """
     Returns the status of the Name Resolver API.
     """
-    response = requests.get(URL + 'status')
+    response = requests.get(URL + 'status', timeout=config.http_timeout())
     response.raise_for_status()
     return response.json()
 
@@ -54,7 +55,7 @@ def lookup(query: str, return_top_response:bool=True, return_synonyms:bool=False
     # set autocomplete to be false by default
     if 'autocomplete' not in kwargs:
         kwargs['autocomplete'] = False
-    response = requests.get(path, params={'string': query, 'limit': limit, **kwargs})
+    response = requests.get(path, params={'string': query, 'limit': limit, **kwargs}, timeout=config.http_timeout())
     if response.status_code == 200:
         result = response.json()
         if len(result) == 0:
@@ -89,7 +90,7 @@ def synonyms(query: str|list, **kwargs):
     """
     path = urllib.parse.urljoin(URL, 'synonyms')
     # set autocomplete to be false by default
-    response = requests.get(path, params={'preferred_curies': query, **kwargs})
+    response = requests.get(path, params={'preferred_curies': query, **kwargs}, timeout=config.http_timeout())
     if response.status_code == 200:
         result = response.json()
         if len(result) == 0:
@@ -150,7 +151,7 @@ def batch_lookup(strings:list[str], size: int=25, return_top_response:bool=True,
             "strings": chunk,
             **kwargs
         }
-        response = requests.post(path, json = payload)
+        response = requests.post(path, json = payload, timeout=config.http_timeout())
         if response.status_code == 200:
             result = response.json()
             if(len(result) == 0):
@@ -194,7 +195,7 @@ def batch_synonyms(strings:list[str], size:int=50, **kwargs) -> dict:
     curies = {}
     for chunk in chunks:
         # set autocomplete to be false by default
-        response = requests.post(path, json={'preferred_curies': chunk, **kwargs})
+        response = requests.post(path, json={'preferred_curies': chunk, **kwargs}, timeout=config.http_timeout())
         if response.status_code == 200:
             result = response.json()
             if len(result) == 0:
