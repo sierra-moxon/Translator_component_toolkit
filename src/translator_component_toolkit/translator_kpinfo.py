@@ -1,9 +1,13 @@
 
 # used May 30, 2025
 
+import logging
+
 import requests
 import json
 import pandas as pd
+
+logger = logging.getLogger(__name__)
 
 """This is the root URL for the resource."""
 URL = 'https://smart-api.info/api/query?q=tags.name:translator'
@@ -32,9 +36,11 @@ def get_translator_kp_info() -> tuple[pd.DataFrame, dict[str, str]]:
     response = requests.get(url)
     try:
         response.raise_for_status()
-    except Exception:
-        print(f"error downloading smartapi specs: {response.status_code}")
-        exit()
+    except requests.RequestException as e:
+        logger.error("error downloading smartapi specs: %s", response.status_code)
+        raise requests.RequestException(
+            f"error downloading smartapi specs: {response.status_code}"
+        ) from e
 
     content = json.loads(response.content)
     smartapis = content["hits"]
@@ -54,8 +60,8 @@ def get_translator_kp_info() -> tuple[pd.DataFrame, dict[str, str]]:
             
             server = api['servers'][i]
             if 'x-maturity' not in server:
-                print(f"Skipping server without x-maturity: {server}")
-                
+                logger.debug("Skipping server without x-maturity: %s", server)
+
             else:
                 if server['x-maturity'] == 'production':
                     # if prod_ur is not ars-prod.transltr.io
@@ -99,8 +105,8 @@ def get_translator_kp_info() -> tuple[pd.DataFrame, dict[str, str]]:
                     test_found = True
 
         if not (prod_found or ci_found or test_found):
-            print(api['info']['title'])
-            print(f"Skipping server without production, staging or testing: {server}")
+            logger.debug("%s", api['info']['title'])
+            logger.debug("Skipping server without production, staging or testing: %s", server)
         else:
             id_list.append('https://smart-api.info/ui/'+api['_id'])
             title_list.append(api['info']['title'])
