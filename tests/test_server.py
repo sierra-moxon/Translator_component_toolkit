@@ -1,6 +1,14 @@
 """Simple tests for TCT MCP Server functionality."""
 
+import asyncio
+
+from translator_component_toolkit.schema import all_names
 from translator_component_toolkit.server import mcp
+
+
+def _registered_tool_names():
+    tools = asyncio.run(mcp.list_tools())
+    return {t.name for t in tools}
 
 
 def test_mcp_server_exists():
@@ -11,15 +19,19 @@ def test_mcp_server_exists():
 
 def test_mcp_server_ready():
     """Test that MCP server is ready for orchestrating agent access."""
-    # Check that the server has the FastMCP functionality needed for agents
-    assert hasattr(mcp, 'run'), "MCP server should be runnable for agents"
+    assert hasattr(mcp, "run"), "MCP server should be runnable for agents"
     assert mcp.name == "translator-toolkit", "MCP server should have correct name for agents"
 
 
+def test_all_registry_tools_are_registered():
+    """Every canonical name and alias in the registry is exposed as an MCP tool."""
+    registered = _registered_tool_names()
+    assert set(all_names()).issubset(registered)
+
+
 def test_mcp_tools_accessible():
-    """Test that MCP tools are accessible to orchestrating agent."""
+    """Tool callables remain importable from the server module."""
     from translator_component_toolkit.server import name_lookup, normalize_nodes
-    
-    # These should exist as tool objects that agents can call
-    assert name_lookup is not None, "name_lookup tool should be accessible"
-    assert normalize_nodes is not None, "normalize_nodes tool should be accessible"
+
+    assert callable(name_lookup), "name_lookup tool should be accessible"
+    assert callable(normalize_nodes), "normalize_nodes tool should be accessible"
