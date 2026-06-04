@@ -4,9 +4,11 @@ import pandas as pd
 
 
 def find_link(name):
-    #pre = "https://dev.smart-api.info/api/metakg/consolidated?size=2000&q=%28api.x-translator.component%3AKP+AND+api.name%3A" # This works for the previous version
-    pre = "https://smart-api.info/api/metakg/consolidated?size=5000&q=%28api.x-translator.component%3AKP+AND+api.name%3A" 
-    end = "%5C%28Trapi+v1.5.0%5C%29%29"
+    pre  = "https://smart-api.info/api/metakg/consolidated?size=5000&q=%28api.x-translator.component%3AKP+AND+api.name%3A"  # This works in May 2026
+    #pre = "https://smart-api.info/api/metakg/consolidated?size=5000&api.x-translator.component=KP&api.name="
+
+    end = "%5C%28Trapi+v1.5.0%5C%29%29" # This works in May 2026
+    #end = "%28Trapi+v1.5.0%29" # This works in June 2026
     if '(Trapi v1.5.0)' in name:
         url = pre
         name_raw = name.split("(")[0]
@@ -28,6 +30,10 @@ def find_link(name):
         for i in range(0,length-1):
             url = url + words[i] + "+"
         url = url+words[length-1]+"%29"
+    print(name, url)
+    # check if the url returns a 200 status code, if not, return None
+    
+    
     return(url)
 
 
