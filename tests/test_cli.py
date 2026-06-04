@@ -57,8 +57,8 @@ def test_required_argument_is_enforced():
 
 def test_invalid_json_argument_is_rejected():
     runner = CliRunner()
-    # get-metakg takes a JSON dict argument; pass invalid JSON
-    result = runner.invoke(main, ["metakg", "get-metakg", "{not json"])
+    # get-metakg takes an optional --api-names JSON dict; pass invalid JSON
+    result = runner.invoke(main, ["metakg", "get-metakg", "--api-names", "{not json"])
     assert result.exit_code == EXIT_USAGE
     assert "valid JSON" in result.output
 
@@ -97,8 +97,10 @@ def test_unexpected_exception_exits_one(monkeypatch):
 
 def test_invalid_parameter_exits_usage():
     runner = CliRunner()
-    # query-kp validates api_name against the (empty) api_names dict.
-    result = runner.invoke(main, ["query", "query-kp", "Unknown", "{}", "{}", "{}"])
+    # api_names/api_predicates are now optional options; passing an explicit
+    # empty api_names makes query-kp validate api_name against it (no catalog
+    # fetch, so no network) and fail with a usage error.
+    result = runner.invoke(main, ["query", "query-kp", "Unknown", "{}", "--api-names", "{}"])
     assert result.exit_code == EXIT_USAGE
 
 

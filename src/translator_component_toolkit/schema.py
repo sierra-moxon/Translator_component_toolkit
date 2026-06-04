@@ -19,7 +19,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
 
-from . import name_resolver, node_normalizer, translator_kpinfo, translator_metakg, translator_query, trapi
+from . import catalog, name_resolver, node_normalizer, translator_kpinfo, translator_metakg, translator_query, trapi
 from .errors import validate_choice
 from .io import paginate
 
@@ -153,8 +153,13 @@ def _get_kp_info() -> Any:
     return translator_kpinfo.get_translator_kp_info()
 
 
-def _get_metakg_data(api_names: dict, limit: int | None = None, offset: int = 0) -> Any:
-    result = translator_metakg.get_KP_metadata(api_names)
+def _get_metakg_data(api_names: dict | None = None, limit: int | None = None, offset: int = 0) -> Any:
+    # Omit api_names to use the cached Translator catalog's MetaKG; supply it to
+    # build the MetaKG for a specific set of APIs (explicit override).
+    if api_names is None:
+        result = catalog.get_catalog().metakg
+    else:
+        result = translator_metakg.get_KP_metadata(api_names)
     # Preserve the raw DataFrame when unbounded so downstream tools (e.g.
     # add_metakg_api) can keep chaining on it; otherwise return an envelope.
     if limit is None and offset == 0:
@@ -177,18 +182,33 @@ def _get_api_predicates() -> Any:
     return translator_query.get_translator_API_predicates()
 
 
-def _optimize_query_for_api(query_json: dict, api_name: str, api_predicates: dict) -> Any:
+def _optimize_query_for_api(query_json: dict, api_name: str, api_predicates: dict | None = None) -> Any:
+    if api_predicates is None:
+        api_predicates = catalog.get_catalog().api_predicates
     validate_choice(api_name, api_predicates.keys(), "api_name")
     return translator_query.optimize_query_json(query_json, api_name, api_predicates)
 
 
-def _query_knowledge_provider(api_name: str, query_json: dict, api_names: dict, api_predicates: dict) -> Any:
+def _query_knowledge_provider(api_name: str, query_json: dict, api_names: dict | None = None,
+                              api_predicates: dict | None = None) -> Any:
+    # Resolve api_names first and validate before fetching api_predicates, so
+    # bad input fails fast without an extra catalog build.
+    if api_names is None:
+        api_names = catalog.get_catalog().api_names
     validate_choice(api_name, api_names.keys(), "api_name")
+    if api_predicates is None:
+        api_predicates = catalog.get_catalog().api_predicates
     return translator_query.query_KP(api_name, query_json, api_names, api_predicates)
 
 
-def _parallel_query_apis(query_json: dict, selected_apis: list[str], api_names: dict, api_predicates: dict,
-                         max_workers: int = 1) -> Any:
+def _parallel_query_apis(query_json: dict, selected_apis: list[str], api_names: dict | None = None,
+                         api_predicates: dict | None = None, max_workers: int = 1) -> Any:
+    if api_names is None or api_predicates is None:
+        cat = catalog.get_catalog()
+        if api_names is None:
+            api_names = cat.api_names
+        if api_predicates is None:
+            api_predicates = cat.api_predicates
     return translator_query.parallel_api_query(query_json, selected_apis, api_names, api_predicates, max_workers)
 
 
@@ -267,7 +287,8 @@ REGISTRY: list[ToolSpec] = [
         group="metakg",
         paginated=True,
         params=[
-            ParamSpec("api_names", dict, required=True, help="Dictionary mapping API names to URLs."),
+            ParamSpec("api_names", dict, default=None,
+                      help="Map of API names to URLs; omit to use the cached Translator catalog."),
             ParamSpec("limit", int, default=None,
                       help="Max rows to return; omit for the full DataFrame (chainable)."),
             ParamSpec("offset", int, default=0, help="Row offset when paginating."),
@@ -319,7 +340,8 @@ REGISTRY: list[ToolSpec] = [
         params=[
             ParamSpec("query_json", dict, required=True, help="TRAPI 1.5.0 format query."),
             ParamSpec("api_name", str, required=True, help="Name of the API to query."),
-            ParamSpec("api_predicates", dict, required=True, help="Dictionary of API names to their predicates."),
+            ParamSpec("api_predicates", dict, default=None,
+                      help="Map of API names to predicates; omit to use the cached Translator catalog."),
         ],
         output_hint="dict (modified query)",
     ),
@@ -332,8 +354,10 @@ REGISTRY: list[ToolSpec] = [
         params=[
             ParamSpec("api_name", str, required=True, help="Name of the API to query."),
             ParamSpec("query_json", dict, required=True, help="TRAPI 1.5.0 format query."),
-            ParamSpec("api_names", dict, required=True, help="Dictionary mapping API names to URLs."),
-            ParamSpec("api_predicates", dict, required=True, help="Dictionary of API names to their predicates."),
+            ParamSpec("api_names", dict, default=None,
+                      help="Map of API names to URLs; omit to use the cached Translator catalog."),
+            ParamSpec("api_predicates", dict, default=None,
+                      help="Map of API names to predicates; omit to use the cached Translator catalog."),
         ],
         output_hint="dict (knowledge graph) or None",
     ),
@@ -346,8 +370,10 @@ REGISTRY: list[ToolSpec] = [
         params=[
             ParamSpec("query_json", dict, required=True, help="TRAPI 1.5.0 format query."),
             ParamSpec("selected_apis", list[str], required=True, help="List of API names to query."),
-            ParamSpec("api_names", dict, required=True, help="Dictionary mapping API names to URLs."),
-            ParamSpec("api_predicates", dict, required=True, help="Dictionary of API names to their predicates."),
+            ParamSpec("api_names", dict, default=None,
+                      help="Map of API names to URLs; omit to use the cached Translator catalog."),
+            ParamSpec("api_predicates", dict, default=None,
+                      help="Map of API names to predicates; omit to use the cached Translator catalog."),
             ParamSpec("max_workers", int, default=1, help="Number of parallel workers."),
         ],
         output_hint="dict (merged knowledge graph)",
