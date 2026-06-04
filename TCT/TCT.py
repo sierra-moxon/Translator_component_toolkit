@@ -1269,7 +1269,8 @@ def Path_finder(input_node1, input_node2, intermediate_categories, APInames, met
                                             fontsize=10,
                                             title_fontsize=12,)
 
-    return paths,  input_node1_id, input_node2_id, result1, result2, result_parsed1, result_parsed2, result_ranked_by_primary_infores1, result_ranked_by_primary_infores2
+    #return paths,  input_node1_id, input_node2_id, result1, result2, result_parsed1, result_parsed2, result_ranked_by_primary_infores1, result_ranked_by_primary_infores2
+    return  result1, result2
 
 # used. Dec 5, 2023 (Example_query_one_hop_with_category.ipynb)
 
