@@ -47,8 +47,11 @@ def _register(spec: ToolSpec) -> None:
     for alias in spec.aliases:
         wrap(alias, f"Deprecated alias for `{spec.name}`. {spec.summary}")
 
-    # keep a module attribute so `from .server import name_lookup` still works
+    # keep module attributes so `from .server import lookup_name` (and the
+    # deprecated `name_lookup` alias) still work for direct importers
     globals()[spec.name] = base
+    for alias in spec.aliases:
+        globals()[alias] = base
 
 
 for _spec in REGISTRY:

@@ -11,19 +11,33 @@ from translator_component_toolkit.schema import (
 )
 
 EXPECTED_NAMES = {
-    "name_lookup",
-    "get_name_synonyms",
-    "batch_name_lookup",
+    "lookup_name",
+    "get_synonyms",
+    "lookup_names",
     "normalize_nodes",
     "get_kp_info",
-    "get_metakg_data",
-    "add_custom_api_to_metakg",
-    "add_plover_apis_to_metakg",
+    "get_metakg",
+    "add_metakg_api",
+    "add_plover_apis",
     "get_api_predicates",
-    "optimize_query_for_api",
-    "query_knowledge_provider",
-    "parallel_query_apis",
-    "trapi_query_endpoint",
+    "optimize_query",
+    "query_kp",
+    "query_kps_parallel",
+    "query_trapi",
+}
+
+# Canonical name -> deprecated alias kept for backwards compatibility.
+EXPECTED_ALIASES = {
+    "lookup_name": "name_lookup",
+    "get_synonyms": "get_name_synonyms",
+    "lookup_names": "batch_name_lookup",
+    "get_metakg": "get_metakg_data",
+    "add_metakg_api": "add_custom_api_to_metakg",
+    "add_plover_apis": "add_plover_apis_to_metakg",
+    "optimize_query": "optimize_query_for_api",
+    "query_kp": "query_knowledge_provider",
+    "query_kps_parallel": "parallel_query_apis",
+    "query_trapi": "trapi_query_endpoint",
 }
 
 
@@ -39,6 +53,20 @@ def test_registry_covers_expected_tools():
 def test_names_are_unique_across_canonical_and_aliases():
     names = all_names()
     assert len(names) == len(set(names)), "duplicate tool name or alias detected"
+
+
+def test_canonical_names_use_verb_object_vocabulary():
+    allowed_verbs = {"get", "list", "lookup", "normalize", "query", "add", "optimize"}
+    for spec in REGISTRY:
+        verb = spec.name.split("_", 1)[0]
+        assert verb in allowed_verbs, f"{spec.name} does not start with a canonical verb"
+
+
+def test_deprecated_aliases_are_preserved():
+    by_name = {spec.name: spec for spec in REGISTRY}
+    for canonical, alias in EXPECTED_ALIASES.items():
+        assert canonical in by_name, f"missing canonical tool {canonical}"
+        assert alias in by_name[canonical].aliases, f"{canonical} missing alias {alias}"
 
 
 def test_every_func_is_callable():

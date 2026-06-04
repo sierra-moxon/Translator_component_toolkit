@@ -189,7 +189,8 @@ def _trapi_query_endpoint(url: str, query: dict) -> Any:
 
 REGISTRY: list[ToolSpec] = [
     ToolSpec(
-        name="name_lookup",
+        name="lookup_name",
+        aliases=["name_lookup"],
         summary="Look up a name/term and return normalized TranslatorNode information.",
         func=_name_lookup,
         group="name",
@@ -202,7 +203,8 @@ REGISTRY: list[ToolSpec] = [
         output_hint="TranslatorNode or list[TranslatorNode]",
     ),
     ToolSpec(
-        name="get_name_synonyms",
+        name="get_synonyms",
+        aliases=["get_name_synonyms"],
         summary="Get synonyms for a given CURIE.",
         func=_get_name_synonyms,
         group="name",
@@ -210,7 +212,8 @@ REGISTRY: list[ToolSpec] = [
         output_hint="dict[curie, TranslatorNode]",
     ),
     ToolSpec(
-        name="batch_name_lookup",
+        name="lookup_names",
+        aliases=["batch_name_lookup"],
         summary="Batch look up multiple names/terms and return normalized TranslatorNode information.",
         func=_batch_name_lookup,
         group="name",
@@ -244,7 +247,8 @@ REGISTRY: list[ToolSpec] = [
         output_hint="tuple[DataFrame, dict[name, url]]",
     ),
     ToolSpec(
-        name="get_metakg_data",
+        name="get_metakg",
+        aliases=["get_metakg_data"],
         summary="Get MetaKG metadata (predicates, subjects, objects) for Knowledge Providers.",
         func=_get_metakg_data,
         group="metakg",
@@ -252,7 +256,8 @@ REGISTRY: list[ToolSpec] = [
         output_hint="DataFrame",
     ),
     ToolSpec(
-        name="add_custom_api_to_metakg",
+        name="add_metakg_api",
+        aliases=["add_custom_api_to_metakg"],
         summary="Add a custom API to the knowledge graph metadata.",
         func=_add_custom_api_to_metakg,
         group="metakg",
@@ -268,7 +273,8 @@ REGISTRY: list[ToolSpec] = [
         output_hint="tuple[dict, DataFrame]",
     ),
     ToolSpec(
-        name="add_plover_apis_to_metakg",
+        name="add_plover_apis",
+        aliases=["add_plover_apis_to_metakg"],
         summary="Add Plover APIs (CATRAX team APIs) to the knowledge graph metadata.",
         func=_add_plover_apis_to_metakg,
         group="metakg",
@@ -286,7 +292,8 @@ REGISTRY: list[ToolSpec] = [
         output_hint="tuple[dict, DataFrame, dict]",
     ),
     ToolSpec(
-        name="optimize_query_for_api",
+        name="optimize_query",
+        aliases=["optimize_query_for_api"],
         summary="Remove predicates from a TRAPI query that the selected API does not support.",
         func=_optimize_query_for_api,
         group="query",
@@ -298,7 +305,8 @@ REGISTRY: list[ToolSpec] = [
         output_hint="dict (modified query)",
     ),
     ToolSpec(
-        name="query_knowledge_provider",
+        name="query_kp",
+        aliases=["query_knowledge_provider"],
         summary="Query an individual Knowledge Provider API with a TRAPI 1.5.0 query.",
         func=_query_knowledge_provider,
         group="query",
@@ -311,7 +319,8 @@ REGISTRY: list[ToolSpec] = [
         output_hint="dict (knowledge graph) or None",
     ),
     ToolSpec(
-        name="parallel_query_apis",
+        name="query_kps_parallel",
+        aliases=["parallel_query_apis"],
         summary="Query multiple APIs in parallel and merge results into a single knowledge graph.",
         func=_parallel_query_apis,
         group="query",
@@ -325,7 +334,8 @@ REGISTRY: list[ToolSpec] = [
         output_hint="dict (merged knowledge graph)",
     ),
     ToolSpec(
-        name="trapi_query_endpoint",
+        name="query_trapi",
+        aliases=["trapi_query_endpoint"],
         summary="Query a TRAPI endpoint with a TRAPI query and return the result message.",
         func=_trapi_query_endpoint,
         group="trapi",

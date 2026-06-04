@@ -30,8 +30,15 @@ def test_all_registry_tools_are_registered():
 
 
 def test_mcp_tools_accessible():
-    """Tool callables remain importable from the server module."""
-    from translator_component_toolkit.server import name_lookup, normalize_nodes
+    """Canonical tool callables remain importable from the server module."""
+    from translator_component_toolkit.server import lookup_name, normalize_nodes
 
-    assert callable(name_lookup), "name_lookup tool should be accessible"
+    assert callable(lookup_name), "lookup_name tool should be accessible"
     assert callable(normalize_nodes), "normalize_nodes tool should be accessible"
+
+
+def test_deprecated_alias_still_importable():
+    """The deprecated alias name is still importable for backwards compatibility."""
+    from translator_component_toolkit.server import name_lookup
+
+    assert callable(name_lookup), "deprecated name_lookup alias should still be accessible"
