@@ -9,6 +9,7 @@ from translator_component_toolkit.errors import InvalidParameterError
 from translator_component_toolkit.schema import (
     REGISTRY,
     ParamSpec,
+    ToolAnnotations,
     ToolSpec,
     all_names,
     make_signed_callable,
@@ -212,3 +213,52 @@ def test_query_kp_explicit_api_names_override_catalog(seeded_catalog):
     # known "API X" is rejected.
     with pytest.raises(InvalidParameterError):
         schema._query_knowledge_provider("API X", {}, api_names={})
+
+
+# ---------------------------------------------------------------------------
+# MCP tool annotations (issue #21).
+# ---------------------------------------------------------------------------
+
+# Tools whose work is purely local (no external service). Everything else in the
+# registry reaches out to the network.
+LOCAL_ONLY_TOOLS = {"optimize_query", "add_metakg_api"}
+
+
+def test_every_tool_has_annotations():
+    for spec in REGISTRY:
+        assert isinstance(spec.annotations, ToolAnnotations)
+
+
+def test_all_tools_are_read_only_and_non_destructive():
+    for spec in REGISTRY:
+        assert spec.annotations.read_only is True, f"{spec.name} should be read-only"
+        assert spec.annotations.destructive is False, f"{spec.name} should be non-destructive"
+        assert spec.annotations.idempotent is True, f"{spec.name} should be idempotent"
+
+
+def test_open_world_matches_network_reach():
+    for spec in REGISTRY:
+        expected = spec.name not in LOCAL_ONLY_TOOLS
+        assert spec.annotations.open_world is expected, f"{spec.name} open_world should be {expected}"
+
+
+def test_to_mcp_renders_spec_hint_keys():
+    annotations = ToolAnnotations(read_only=True, destructive=False, idempotent=True, open_world=False)
+    assert annotations.to_mcp() == {
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": False,
+    }
+
+
+def test_tool_annotations_defaults_match_mcp_defaults():
+    # MCP assumes a tool is writable, destructive, non-idempotent, open-world
+    # unless told otherwise.
+    defaults = ToolAnnotations()
+    assert defaults.to_mcp() == {
+        "readOnlyHint": False,
+        "destructiveHint": True,
+        "idempotentHint": False,
+        "openWorldHint": True,
+    }
