@@ -15,7 +15,7 @@ def test_env_override_is_used():
         assert config.http_timeout() == 5.0
 
 
-def test_unparseable_env_falls_back_to_default():
+def test_unparsable_env_falls_back_to_default():
     with patch.dict("os.environ", {"TCT_HTTP_TIMEOUT": "soon"}, clear=True):
         assert config.http_timeout() == config.DEFAULT_HTTP_TIMEOUT
 
