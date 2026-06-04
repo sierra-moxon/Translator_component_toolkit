@@ -14,9 +14,8 @@ surface stays in lockstep with the library (and, later, the CLI).
 """
 
 from fastmcp import FastMCP
-from mcp.shared.exceptions import McpError
-from mcp.types import ErrorData, INTERNAL_ERROR
 
+from .errors import to_mcp_error
 from .schema import REGISTRY, ToolSpec, make_signed_callable
 
 # Create unified MCP server
@@ -33,8 +32,8 @@ def _register(spec: ToolSpec) -> None:
         def tool_fn(*args, **kwargs):
             try:
                 return signed(*args, **kwargs)
-            except Exception as e:  # noqa: BLE001 - surfaced to MCP client
-                raise McpError(ErrorData(INTERNAL_ERROR, f"{name} error: {str(e)}")) from e
+            except Exception as e:  # noqa: BLE001 - mapped to a teaching McpError
+                raise to_mcp_error(e, name) from e
 
         tool_fn.__name__ = name
         tool_fn.__qualname__ = name
@@ -47,8 +46,11 @@ def _register(spec: ToolSpec) -> None:
     for alias in spec.aliases:
         wrap(alias, f"Deprecated alias for `{spec.name}`. {spec.summary}")
 
-    # keep a module attribute so `from .server import name_lookup` still works
+    # keep module attributes so `from .server import lookup_name` (and the
+    # deprecated `name_lookup` alias) still work for direct importers
     globals()[spec.name] = base
+    for alias in spec.aliases:
+        globals()[alias] = base
 
 
 for _spec in REGISTRY:
