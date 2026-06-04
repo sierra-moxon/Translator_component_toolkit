@@ -4,6 +4,8 @@ import requests
 import json
 import pandas as pd
 
+from . import config
+
 logger = logging.getLogger(__name__)
 
 
@@ -66,10 +68,10 @@ def get_KP_metadata(APInames:dict[str, str]) -> pd.DataFrame:
     for KP in APInames.keys():
         json_text ={}
         if KP == "RTX KG2 - TRAPI 1.5.0": 
-            text =requests.get("https://smart-api.info/api/metakg/consolidated?size=20&q=%28api.x-translator.component%3AKP+AND+api.name%3ARTX+KG2+%5C-+TRAPI+1%5C.4%5C.0%29").text  # This works for the previous version
+            text =requests.get("https://smart-api.info/api/metakg/consolidated?size=20&q=%28api.x-translator.component%3AKP+AND+api.name%3ARTX+KG2+%5C-+TRAPI+1%5C.4%5C.0%29", timeout=config.http_timeout()).text  # This works for the previous version
             json_text = json.loads(text)
         else:   
-            text = requests.get(find_link(KP)).text
+            text = requests.get(find_link(KP), timeout=config.http_timeout()).text
             json_text = json.loads(text)
 
         for i in (json_text['hits']):
@@ -155,7 +157,7 @@ def add_plover_API(APInames:dict[str, str], metaKG:pd.DataFrame) -> tuple[dict[s
     import requests
     url = 'https://multiomics.rtx.ai:9990/BigGIM_DrugResponse_PerformancePhase/meta_knowledge_graph'
     try:
-        response = requests.get(url, timeout=5)
+        response = requests.get(url, timeout=config.http_timeout())
         if response.status_code == 200:
             data = response.json()
             for i in range(len(data["edges"])):
@@ -171,7 +173,7 @@ def add_plover_API(APInames:dict[str, str], metaKG:pd.DataFrame) -> tuple[dict[s
     
     url = 'https://multiomics.rtx.ai:9990/PharmacogenomicsKG/meta_knowledge_graph'
     try: 
-        response = requests.get(url)
+        response = requests.get(url, timeout=config.http_timeout())
         if response.status_code == 200:
             data = response.json()
             for i in range(len(data["edges"])):
@@ -185,7 +187,7 @@ def add_plover_API(APInames:dict[str, str], metaKG:pd.DataFrame) -> tuple[dict[s
 
     url = 'https://multiomics.rtx.ai:9990/ctkp/meta_knowledge_graph'
     try: 
-        response = requests.get(url)
+        response = requests.get(url, timeout=config.http_timeout())
         if response.status_code == 200:
             data = response.json()
             for i in range(len(data["edges"])):
@@ -199,7 +201,7 @@ def add_plover_API(APInames:dict[str, str], metaKG:pd.DataFrame) -> tuple[dict[s
 
     url = 'https://multiomics.rtx.ai:9990/dakp/meta_knowledge_graph'
     try:
-        response = requests.get(url)
+        response = requests.get(url, timeout=config.http_timeout())
         if response.status_code == 200:
             data = response.json()
             for i in range(len(data["edges"])):
@@ -212,7 +214,7 @@ def add_plover_API(APInames:dict[str, str], metaKG:pd.DataFrame) -> tuple[dict[s
     
     url = 'https://multiomics.rtx.ai:9990/mokp/meta_knowledge_graph'
     try:
-        response = requests.get(url)
+        response = requests.get(url, timeout=config.http_timeout())
         if response.status_code == 200:
             data = response.json()
             for i in range(len(data["edges"])):
@@ -224,7 +226,7 @@ def add_plover_API(APInames:dict[str, str], metaKG:pd.DataFrame) -> tuple[dict[s
     
     url = 'https://multiomics.rtx.ai:9990/mbkp/meta_knowledge_graph'
     try:
-        response = requests.get(url)
+        response = requests.get(url, timeout=config.http_timeout())
         if response.status_code == 200:
             data = response.json()
             for i in range(len(data["edges"])):
@@ -237,7 +239,7 @@ def add_plover_API(APInames:dict[str, str], metaKG:pd.DataFrame) -> tuple[dict[s
 
     url = 'https://kg2cploverdb.ci.transltr.io/meta_knowledge_graph'
     try:
-        response = requests.get(url)
+        response = requests.get(url, timeout=config.http_timeout())
         if response.status_code == 200:
             data = response.json()
             for i in range(len(data["edges"])):

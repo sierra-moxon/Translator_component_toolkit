@@ -2,6 +2,7 @@ import logging
 import requests
 from copy import deepcopy
 import pandas
+from . import config
 from . import translator_metakg
 from . import translator_kpinfo
 
@@ -176,7 +177,7 @@ def query_KP(API_name_cur, query_json, APInames, API_predicates):
     query_copy = deepcopy(query_json)
     # optimize on our private copy
     query_json_cur = optimize_query_json(query_copy, API_name_cur, API_predicates)
-    response = requests.post(API_url_cur, json=query_json_cur)
+    response = requests.post(API_url_cur, json=query_json_cur, timeout=config.http_timeout())
     if response.status_code == 200:
         result = response.json().get("message", {})
         kg = result.get("knowledge_graph", {})
