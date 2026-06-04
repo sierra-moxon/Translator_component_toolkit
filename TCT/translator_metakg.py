@@ -79,7 +79,7 @@ def get_KP_metadata(APInames:dict[str, str], use_new_url=True) -> pd.DataFrame:
             json_text = json.loads(text)
             if 'hits' not in json_text:
                 if use_new_url:
-                    print(KP, '- no hits found in new metakg URL, trying old URL pattern')
+                    #print(KP, '- no hits found in new metakg URL, trying old URL pattern')
                     text = requests.get(find_link(KP, use_new_url=False)).text
                     json_text = json.loads(text)
                 else:
@@ -262,7 +262,7 @@ def add_plover_API(APInames:dict[str, str], metaKG:pd.DataFrame) -> tuple[dict[s
 
     return APInames, metaKG
 
-def load_translator_resources(use_new_metakg_url=True):
+def load_translator_resources(use_new_metakg_url=False):
     """
     Load the necessary resources for the Translator.
 
