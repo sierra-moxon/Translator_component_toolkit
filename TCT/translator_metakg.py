@@ -3,15 +3,21 @@ import json
 import pandas as pd
 
 
-def find_link(name):
+def find_link(name, use_new_url=True):
     #pre = "https://dev.smart-api.info/api/metakg/consolidated?size=2000&q=%28api.x-translator.component%3AKP+AND+api.name%3A" # This works for the previous version
-    pre = "https://smart-api.info/api/metakg/consolidated?size=5000&q=%28api.x-translator.component%3AKP+AND+api.name%3A" 
-    end = "%5C%28Trapi+v1.5.0%5C%29%29"
+    if use_new_url:
+        pre = "https://smart-api.info/api/metakg?size=5000&q=(api.x-translator.component:KP+AND+api.name:"
+        end = ")&facet_size=300&aggs=object.raw,subject.raw"
+    else:
+        pre = "https://smart-api.info/api/metakg/consolidated?size=5000&q=%28api.x-translator.component%3AKP+AND+api.name%3A" 
+        end = "%5C%28Trapi+v1.5.0%5C%29%29"
+    name = name.replace(' - ', ' ')
     if '(Trapi v1.5.0)' in name:
         url = pre
         name_raw = name.split("(")[0]
         words = name_raw.split(" ")
     
+        # TODO: replace '(Trapi v1.5.0)' with '\(Trapi+v1.5.0\)'
         length = len(words)
         if length == 1:
             url = url + words[0] + end
@@ -19,7 +25,6 @@ def find_link(name):
             for i in range(0,length-1):
                 url = url + words[i] + "+"
             url = url+words[length-1]+end
-    
     else:
         words = name.split(" ")
         url = pre
@@ -27,11 +32,16 @@ def find_link(name):
         
         for i in range(0,length-1):
             url = url + words[i] + "+"
-        url = url+words[length-1]+"%29"
-    return(url)
+
+        url = url+words[length-1]
+        if use_new_url:
+            url += end
+        else:
+            url = url+"%29"
+    return url
 
 
-def get_KP_metadata(APInames:dict[str, str]) -> pd.DataFrame:
+def get_KP_metadata(APInames:dict[str, str], use_new_url=True) -> pd.DataFrame:
     '''
     This function is used to get the metadata of the KPs in the APInames dictionary.
 
@@ -64,10 +74,17 @@ def get_KP_metadata(APInames:dict[str, str]) -> pd.DataFrame:
         if KP == "RTX KG2 - TRAPI 1.5.0": 
             text =requests.get("https://smart-api.info/api/metakg/consolidated?size=20&q=%28api.x-translator.component%3AKP+AND+api.name%3ARTX+KG2+%5C-+TRAPI+1%5C.4%5C.0%29").text  # This works for the previous version
             json_text = json.loads(text)
-        else:   
-            text = requests.get(find_link(KP)).text
+        else:
+            text = requests.get(find_link(KP, use_new_url=use_new_url)).text
             json_text = json.loads(text)
-
+            if 'hits' not in json_text:
+                if use_new_url:
+                    print(KP, '- no hits found in new metakg URL, trying old URL pattern')
+                    text = requests.get(find_link(KP, use_new_url=False)).text
+                    json_text = json.loads(text)
+                else:
+                    print(KP, '- no hits found')
+                    continue
         for i in (json_text['hits']):
             Predicate_list.append("biolink:"+i['_id'].split("-")[1])
             API_list.append(KP)
@@ -245,9 +262,14 @@ def add_plover_API(APInames:dict[str, str], metaKG:pd.DataFrame) -> tuple[dict[s
 
     return APInames, metaKG
 
-def load_translator_resources():
+def load_translator_resources(use_new_metakg_url=True):
     """
     Load the necessary resources for the Translator.
+
+    Params
+    ------
+    use_new_metakg_url
+        If True, this uses https://smart-api.info/api/metakg. If False, this uses https://smart-api.info/api/metakg/consolidated?
 
     Returns
     -------
@@ -257,7 +279,7 @@ def load_translator_resources():
     """
     from .translator_kpinfo import get_translator_kp_info
     Translator_KP_info, APInames = get_translator_kp_info()
-    metaKG = get_KP_metadata(APInames)
+    metaKG = get_KP_metadata(APInames, use_new_url=use_new_metakg_url)
   
     APInames, metaKG = add_plover_API(APInames, metaKG)
     return  APInames, metaKG, Translator_KP_info
