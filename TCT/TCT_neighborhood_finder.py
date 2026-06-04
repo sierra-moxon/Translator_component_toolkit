@@ -39,6 +39,8 @@ def parse_results_for_neighborhood_finder(start_node_id:str, results:dict,
             node_info[intermediate_node_id] = node_dict
         else:
             node_dict = node_info[intermediate_node_id]
+        if 'attributes' not in v:
+            v['attributes'] = []
         for attribute in v['attributes']:
             if attribute['attribute_type_id'] == f'{s_o}_category':
                 if 'categories' not in node_dict:
@@ -93,29 +95,44 @@ def parse_results_for_neighborhood_finder(start_node_id:str, results:dict,
     return output
 
 
-def neighborhood_finder(input_node, node2_categories, APInames, metaKG, API_predicates, input_node_category = []):
+def neighborhood_finder(input_node, node2_categories, APInames, metaKG, API_predicates,
+        input_node_category = [],
+        predicates_subset=None,
+        attribute_constraints=None):
     """
     This function is used to find the neighborhood of a given input node with intermediate categories.
 
-    --------------
-    Parameters:
-    input_node (str): The input node - should be a CURIE id.
-    node2_categories (list): A list of intermediate categories to be used in the neighborhood finding process.
-    APInames (dict): A dictionary containing the names of the APIs to be used.
-    metaKG (DataFrame): The metadata knowledge graph containing information about the APIs and their predicates.
-    API_predicates (dict): A dictionary containing the predicates for each API.
-    input_node_category (list): Optional. A list of categories for the input node. If empty, it will be derived from the input node's types.
+    Parameters
+    ----------
+    input_node (str)
+        The input node - should be a CURIE id.
+    node2_categories (list)
+        A list of intermediate categories to be used in the neighborhood finding process.
+    APInames (dict)
+        A dictionary containing the names of the APIs to be used.
+    metaKG (DataFrame)
+        The metadata knowledge graph containing information about the APIs and their predicates.
+    API_predicates (dict)
+        A dictionary containing the predicates for each API.
+    input_node_category (list)
+        Optional. A list of categories for the input node. If empty, it will be derived from the input node's types.
+    attribute_constraints (list)
+        Optional. List of outputs of translator_query.build_attribute_constraint
 
+    Returns
     --------------
-    Returns:
-    input_node_id (str): The curie id of the input node.
-    result (dict): The result of the query for the input node.
-    result_parsed (DataFrame): The parsed results for the input node.
-    result_ranked_by_primary_infores (DataFrame): The ranked results based on primary infores.
+    input_node_id (str)
+        The curie id of the input node.
+    result (dict)
+        The result of the query for the input node.
+    result_parsed (DataFrame)
+        The parsed results for the input node.
+    result_ranked_by_primary_infores (DataFrame)
+        The ranked results based on primary infores.
 
     --------------
     Example:
-    >>> input_node_id, result, result_parsed, result_ranked_by_primary_infores1 = Neighborhood_finder('MONDO:0008170', #Ovarian Cancer
+    >>> input_node_id, result, result_parsed, result_ranked_by_primary_infores1 = neighborhood_finder('MONDO:0008170', #Ovarian Cancer
                                                                                             node2_categories = ['biolink:SmallMolecule', 'biolink:Drug', 'biolink:ChemicalEntity'],
                                                                                             APInames = APInames,
                                                                                             metaKG = metaKG,
@@ -144,10 +161,11 @@ def neighborhood_finder(input_node, node2_categories, APInames, metaKG, API_pred
                                                                 metaKG, APInames)
 
     # Step 3: Format the query JSON for the input node
-    query_json = format_query_json([input_node_id], [],
-                                   [input_node_category],
+    query_json = format_query_json([input_node_id], None,
+                                   None,
                                    node2_categories,
-                                   sele_predicates)
+                                   sele_predicates,
+                                   attribute_constraints=attribute_constraints)
 
     # Step 4: Query the APIs in parallel
     result = translator_query.parallel_api_query(query_json=query_json,
