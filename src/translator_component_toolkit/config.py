@@ -22,7 +22,7 @@ def http_timeout() -> float:
     """Return the configured HTTP timeout in seconds.
 
     Reads ``TCT_HTTP_TIMEOUT`` when set to a positive number; otherwise falls
-    back to :data:`DEFAULT_HTTP_TIMEOUT`. A missing, unparseable, or
+    back to :data:`DEFAULT_HTTP_TIMEOUT`. A missing, unparsable, or
     non-positive value is treated as "use the default" so a bad env var can
     never disable timeouts.
     """
