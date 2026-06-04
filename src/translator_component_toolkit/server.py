@@ -14,9 +14,8 @@ surface stays in lockstep with the library (and, later, the CLI).
 """
 
 from fastmcp import FastMCP
-from mcp.shared.exceptions import McpError
-from mcp.types import ErrorData, INTERNAL_ERROR
 
+from .errors import to_mcp_error
 from .schema import REGISTRY, ToolSpec, make_signed_callable
 
 # Create unified MCP server
@@ -33,8 +32,8 @@ def _register(spec: ToolSpec) -> None:
         def tool_fn(*args, **kwargs):
             try:
                 return signed(*args, **kwargs)
-            except Exception as e:  # noqa: BLE001 - surfaced to MCP client
-                raise McpError(ErrorData(INTERNAL_ERROR, f"{name} error: {str(e)}")) from e
+            except Exception as e:  # noqa: BLE001 - mapped to a teaching McpError
+                raise to_mcp_error(e, name) from e
 
         tool_fn.__name__ = name
         tool_fn.__qualname__ = name
