@@ -53,6 +53,42 @@ class ParamSpec:
 
 
 @dataclass(frozen=True)
+class ToolAnnotations:
+    """MCP behavioral hints for a tool.
+
+    These mirror the MCP tool-annotations spec and help an agent reason about a
+    tool before calling it. Defaults match the MCP defaults (a tool is assumed
+    writable, destructive, non-idempotent, and open-world unless stated).
+
+    Attributes
+    ----------
+    read_only : bool
+        The tool does not modify any state; it only fetches or computes.
+    destructive : bool
+        Whether the tool may perform irreversible updates. Only meaningful when
+        ``read_only`` is False.
+    idempotent : bool
+        Calling repeatedly with the same arguments has no additional effect.
+    open_world : bool
+        The tool interacts with external services (e.g. makes network calls).
+    """
+
+    read_only: bool = False
+    destructive: bool = True
+    idempotent: bool = False
+    open_world: bool = True
+
+    def to_mcp(self) -> dict[str, bool]:
+        """Render as the ``annotations`` dict accepted by ``FastMCP.tool``."""
+        return {
+            "readOnlyHint": self.read_only,
+            "destructiveHint": self.destructive,
+            "idempotentHint": self.idempotent,
+            "openWorldHint": self.open_world,
+        }
+
+
+@dataclass(frozen=True)
 class ToolSpec:
     """One agent-facing operation.
 
@@ -76,6 +112,8 @@ class ToolSpec:
     paginated : bool
         Whether the tool accepts ``limit``/``offset`` and returns a bounded
         response envelope (see :func:`io.paginate`).
+    annotations : ToolAnnotations
+        MCP behavioral hints surfaced to agents during tool registration.
     """
 
     name: str
@@ -86,6 +124,7 @@ class ToolSpec:
     group: str = "misc"
     output_hint: str | None = None
     paginated: bool = False
+    annotations: ToolAnnotations = field(default_factory=ToolAnnotations)
 
 
 def make_signed_callable(spec: ToolSpec) -> Callable[..., Any]:
@@ -220,6 +259,12 @@ def _trapi_query_endpoint(url: str, query: dict) -> Any:
 # Registry: the single source of truth.
 # ---------------------------------------------------------------------------
 
+# Every tool here fetches or computes and returns a result; none mutate a remote
+# resource or local persistent state, and repeating a call has no extra effect.
+# They differ only in whether they reach out to external services.
+_READ_ONLINE = ToolAnnotations(read_only=True, destructive=False, idempotent=True, open_world=True)
+_READ_LOCAL = ToolAnnotations(read_only=True, destructive=False, idempotent=True, open_world=False)
+
 REGISTRY: list[ToolSpec] = [
     ToolSpec(
         name="lookup_name",
@@ -234,6 +279,7 @@ REGISTRY: list[ToolSpec] = [
             ParamSpec("return_synonyms", bool, default=False, help="Include synonyms in the result."),
         ],
         output_hint="TranslatorNode or list[TranslatorNode]",
+        annotations=_READ_ONLINE,
     ),
     ToolSpec(
         name="get_synonyms",
@@ -243,6 +289,7 @@ REGISTRY: list[ToolSpec] = [
         group="name",
         params=[ParamSpec("query", str, required=True, help="CURIE to get synonyms for.")],
         output_hint="dict[curie, TranslatorNode]",
+        annotations=_READ_ONLINE,
     ),
     ToolSpec(
         name="lookup_names",
@@ -257,6 +304,7 @@ REGISTRY: list[ToolSpec] = [
             ParamSpec("return_synonyms", bool, default=False, help="Include synonyms in the results."),
         ],
         output_hint="dict[str, TranslatorNode]",
+        annotations=_READ_ONLINE,
     ),
     ToolSpec(
         name="normalize_nodes",
@@ -271,6 +319,7 @@ REGISTRY: list[ToolSpec] = [
             ParamSpec("drug_chemical_conflate", bool, default=False, help="Enable drug-chemical conflation."),
         ],
         output_hint="TranslatorNode or dict[curie, TranslatorNode]",
+        annotations=_READ_ONLINE,
     ),
     ToolSpec(
         name="get_kp_info",
@@ -278,6 +327,7 @@ REGISTRY: list[ToolSpec] = [
         func=_get_kp_info,
         group="kp",
         output_hint="tuple[DataFrame, dict[name, url]]",
+        annotations=_READ_ONLINE,
     ),
     ToolSpec(
         name="get_metakg",
@@ -294,6 +344,7 @@ REGISTRY: list[ToolSpec] = [
             ParamSpec("offset", int, default=0, help="Row offset when paginating."),
         ],
         output_hint="DataFrame, or bounded envelope {data, total, returned, truncated, next_offset} when limit/offset given",
+        annotations=_READ_ONLINE,
     ),
     ToolSpec(
         name="add_metakg_api",
@@ -311,6 +362,7 @@ REGISTRY: list[ToolSpec] = [
             ParamSpec("new_api_object", str, required=True, help="Object type for the new API."),
         ],
         output_hint="tuple[dict, DataFrame]",
+        annotations=_READ_LOCAL,
     ),
     ToolSpec(
         name="add_plover_apis",
@@ -323,6 +375,7 @@ REGISTRY: list[ToolSpec] = [
             ParamSpec("metakg_df", Any, required=True, help="Current MetaKG DataFrame."),
         ],
         output_hint="tuple[dict, DataFrame]",
+        annotations=_READ_ONLINE,
     ),
     ToolSpec(
         name="get_api_predicates",
@@ -330,6 +383,7 @@ REGISTRY: list[ToolSpec] = [
         func=_get_api_predicates,
         group="query",
         output_hint="tuple[dict, DataFrame, dict]",
+        annotations=_READ_ONLINE,
     ),
     ToolSpec(
         name="optimize_query",
@@ -344,6 +398,7 @@ REGISTRY: list[ToolSpec] = [
                       help="Map of API names to predicates; omit to use the cached Translator catalog."),
         ],
         output_hint="dict (modified query)",
+        annotations=_READ_LOCAL,
     ),
     ToolSpec(
         name="query_kp",
@@ -360,6 +415,7 @@ REGISTRY: list[ToolSpec] = [
                       help="Map of API names to predicates; omit to use the cached Translator catalog."),
         ],
         output_hint="dict (knowledge graph) or None",
+        annotations=_READ_ONLINE,
     ),
     ToolSpec(
         name="query_kps_parallel",
@@ -377,6 +433,7 @@ REGISTRY: list[ToolSpec] = [
             ParamSpec("max_workers", int, default=1, help="Number of parallel workers."),
         ],
         output_hint="dict (merged knowledge graph)",
+        annotations=_READ_ONLINE,
     ),
     ToolSpec(
         name="query_trapi",
@@ -389,6 +446,7 @@ REGISTRY: list[ToolSpec] = [
             ParamSpec("query", dict, required=True, help="TRAPI query dict (e.g. from trapi.build_query)."),
         ],
         output_hint="dict (result message) or None",
+        annotations=_READ_ONLINE,
     ),
 ]
 

@@ -2,13 +2,17 @@
 
 import asyncio
 
-from translator_component_toolkit.schema import all_names
+from translator_component_toolkit.schema import REGISTRY, all_names
 from translator_component_toolkit.server import mcp
 
 
 def _registered_tool_names():
     tools = asyncio.run(mcp.list_tools())
     return {t.name for t in tools}
+
+
+def _registered_tools_by_name():
+    return {t.name: t for t in asyncio.run(mcp.list_tools())}
 
 
 def test_mcp_server_exists():
@@ -42,3 +46,24 @@ def test_deprecated_alias_still_importable():
     from translator_component_toolkit.server import name_lookup
 
     assert callable(name_lookup), "deprecated name_lookup alias should still be accessible"
+
+
+def test_registered_tools_carry_annotations():
+    """Each canonical tool exposes the behavioral hints declared in the registry."""
+    registered = _registered_tools_by_name()
+    for spec in REGISTRY:
+        tool = registered[spec.name]
+        assert tool.annotations is not None, f"{spec.name} missing annotations"
+        assert tool.annotations.readOnlyHint is spec.annotations.read_only
+        assert tool.annotations.destructiveHint is spec.annotations.destructive
+        assert tool.annotations.idempotentHint is spec.annotations.idempotent
+        assert tool.annotations.openWorldHint is spec.annotations.open_world
+
+
+def test_aliases_inherit_canonical_annotations():
+    """A deprecated alias is registered with the same hints as its canonical tool."""
+    registered = _registered_tools_by_name()
+    for spec in REGISTRY:
+        for alias in spec.aliases:
+            assert registered[alias].annotations.readOnlyHint is spec.annotations.read_only
+            assert registered[alias].annotations.openWorldHint is spec.annotations.open_world
