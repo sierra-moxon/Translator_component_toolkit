@@ -115,7 +115,10 @@ def _build_command(spec: ToolSpec) -> click.Command:
 
     command_name = spec.name.replace("_", "-")
     cmd = click.command(name=command_name, help=spec.summary)(callback)
-    for decorator in reversed(decorators):
+    # Decorators are applied to the constructed Command, so Click appends each
+    # param to ``cmd.params`` in iteration order. Iterate in spec order so
+    # positional arguments keep their declared order (not reversed).
+    for decorator in decorators:
         cmd = decorator(cmd)
     return cmd
 

@@ -168,8 +168,17 @@ def make_signed_callable(spec: ToolSpec) -> Callable[..., Any]:
 # isolating the library's notebook-style parameter names from the public API.
 # ---------------------------------------------------------------------------
 
-def _name_lookup(query: str, return_top_response: bool = True, return_synonyms: bool = False) -> Any:
-    return name_resolver.lookup(query, return_top_response, return_synonyms)
+def _name_lookup(query: str, return_top_response: bool = True, return_synonyms: bool = False,
+                 biolink_type: str | None = None, only_taxa: str | None = None, limit: int = 10,
+                 autocomplete: bool = False) -> Any:
+    # Pass typed/taxon constraints through only when set so we don't send empty
+    # filters to the lookup endpoint.
+    extra: dict[str, Any] = {"autocomplete": autocomplete}
+    if biolink_type is not None:
+        extra["biolink_type"] = biolink_type
+    if only_taxa is not None:
+        extra["only_taxa"] = only_taxa
+    return name_resolver.lookup(query, return_top_response, return_synonyms, limit=limit, **extra)
 
 
 def _get_name_synonyms(query: str) -> Any:
@@ -177,8 +186,14 @@ def _get_name_synonyms(query: str) -> Any:
 
 
 def _batch_name_lookup(strings: list[str], size: int = 25, return_top_response: bool = True,
-                       return_synonyms: bool = False) -> Any:
-    return name_resolver.batch_lookup(strings, size, return_top_response, return_synonyms)
+                       return_synonyms: bool = False, biolink_types: list[str] | None = None,
+                       only_taxa: str | None = None, autocomplete: bool = False) -> Any:
+    extra: dict[str, Any] = {"autocomplete": autocomplete}
+    if biolink_types is not None:
+        extra["biolink_types"] = biolink_types
+    if only_taxa is not None:
+        extra["only_taxa"] = only_taxa
+    return name_resolver.batch_lookup(strings, size, return_top_response, return_synonyms, **extra)
 
 
 def _normalize_nodes(query: str, return_equivalent_identifiers: bool = False, conflate: bool = True,
@@ -255,6 +270,36 @@ def _trapi_query_endpoint(url: str, query: dict) -> Any:
     return trapi.query(url, query)
 
 
+def _neighborhood_finder(input_node: str, node2_categories: list[str],
+                         input_node_category: list[str] | None = None) -> Any:
+    # Use the refactored finder that emits a structured TRAPI-style message
+    # (query_graph/knowledge_graph/results) rather than a wide tuple. Import
+    # lazily to keep its heavy dependency tree out of registry import.
+    from . import TCT_neighborhood_finder
+
+    cat = catalog.get_catalog()
+    _input_node_id, _result, parsed_results, _ranked = TCT_neighborhood_finder.neighborhood_finder(
+        input_node, node2_categories, cat.api_names, cat.metakg, cat.api_predicates,
+        input_node_category=input_node_category or [],
+    )
+    return parsed_results
+
+
+def _path_finder(input_node1: str, input_node2: str, intermediate_categories: list[str],
+                 scoring_method: str = "infores") -> Any:
+    from . import TCT_pathfinder
+
+    validate_choice(scoring_method, ["infores", "edges"], "scoring_method")
+    cat = catalog.get_catalog()
+    # pathfinder returns (result1, result2, output); output is the structured
+    # TRAPI-style message with scored analyses. Return that named-field payload.
+    _result1, _result2, output = TCT_pathfinder.pathfinder(
+        input_node1, input_node2, intermediate_categories,
+        cat.api_names, cat.metakg, cat.api_predicates, scoring_method=scoring_method,
+    )
+    return output
+
+
 # ---------------------------------------------------------------------------
 # Registry: the single source of truth.
 # ---------------------------------------------------------------------------
@@ -277,6 +322,13 @@ REGISTRY: list[ToolSpec] = [
             ParamSpec("return_top_response", bool, default=True,
                       help="Return only the top response (True) or all responses (False)."),
             ParamSpec("return_synonyms", bool, default=False, help="Include synonyms in the result."),
+            ParamSpec("biolink_type", str, default=None,
+                      help="Constrain results to a Biolink category, e.g. 'biolink:Disease'."),
+            ParamSpec("only_taxa", str, default=None,
+                      help="Constrain results to a taxon, e.g. 'NCBITaxon:9606' for human."),
+            ParamSpec("limit", int, default=10, help="Maximum number of results to return."),
+            ParamSpec("autocomplete", bool, default=False,
+                      help="Treat the query as a possibly-incomplete prefix."),
         ],
         output_hint="TranslatorNode or list[TranslatorNode]",
         annotations=_READ_ONLINE,
@@ -302,6 +354,12 @@ REGISTRY: list[ToolSpec] = [
             ParamSpec("size", int, default=25, help="Chunking size for batch processing."),
             ParamSpec("return_top_response", bool, default=True, help="Return only the top response per string."),
             ParamSpec("return_synonyms", bool, default=False, help="Include synonyms in the results."),
+            ParamSpec("biolink_types", list[str], default=None,
+                      help="Constrain results to Biolink categories, e.g. ['biolink:Disease', 'biolink:Gene']."),
+            ParamSpec("only_taxa", str, default=None,
+                      help="Constrain results to a taxon, e.g. 'NCBITaxon:9606' for human."),
+            ParamSpec("autocomplete", bool, default=False,
+                      help="Treat each query as a possibly-incomplete prefix."),
         ],
         output_hint="dict[str, TranslatorNode]",
         annotations=_READ_ONLINE,
@@ -446,6 +504,39 @@ REGISTRY: list[ToolSpec] = [
             ParamSpec("query", dict, required=True, help="TRAPI query dict (e.g. from trapi.build_query)."),
         ],
         output_hint="dict (result message) or None",
+        annotations=_READ_ONLINE,
+    ),
+    ToolSpec(
+        name="find_neighborhood",
+        aliases=["neighborhood_finder"],
+        summary="Find one-hop neighbors of a node, filtered by Biolink category and ranked by primary infores.",
+        func=_neighborhood_finder,
+        group="query",
+        params=[
+            ParamSpec("input_node", str, required=True, help="CURIE of the input node, e.g. 'MONDO:0008170'."),
+            ParamSpec("node2_categories", list[str], required=True,
+                      help="Biolink categories for the neighbor node, e.g. ['biolink:Drug']."),
+            ParamSpec("input_node_category", list[str], default=None,
+                      help="Optional Biolink categories for the input node; derived from normalization when omitted."),
+        ],
+        output_hint="dict (TRAPI-style message: query_graph, knowledge_graph, results with scored analyses, auxiliary_graphs)",
+        annotations=_READ_ONLINE,
+    ),
+    ToolSpec(
+        name="find_path",
+        aliases=["path_finder"],
+        summary="Find paths between two nodes through intermediate Biolink categories, scored by shared support.",
+        func=_path_finder,
+        group="query",
+        params=[
+            ParamSpec("input_node1", str, required=True, help="CURIE of the first node, e.g. 'NCBIGene:7477'."),
+            ParamSpec("input_node2", str, required=True, help="CURIE of the second node, e.g. 'NCBIGene:4869'."),
+            ParamSpec("intermediate_categories", list[str], required=True,
+                      help="Biolink categories for the bridging node, e.g. ['biolink:Gene', 'biolink:Protein']."),
+            ParamSpec("scoring_method", str, default="infores", choices=["infores", "edges"],
+                      help="How bridging nodes are scored: 'infores' (default) or 'edges'."),
+        ],
+        output_hint="dict (TRAPI-style message: query_graph, knowledge_graph, results with scored analyses, auxiliary_graphs)",
         annotations=_READ_ONLINE,
     ),
 ]

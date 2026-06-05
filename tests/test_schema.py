@@ -29,6 +29,8 @@ EXPECTED_NAMES = {
     "query_kp",
     "query_kps_parallel",
     "query_trapi",
+    "find_neighborhood",
+    "find_path",
 }
 
 # Canonical name -> deprecated alias kept for backwards compatibility.
@@ -43,6 +45,8 @@ EXPECTED_ALIASES = {
     "query_kp": "query_knowledge_provider",
     "query_kps_parallel": "parallel_query_apis",
     "query_trapi": "trapi_query_endpoint",
+    "find_neighborhood": "neighborhood_finder",
+    "find_path": "path_finder",
 }
 
 
@@ -61,7 +65,7 @@ def test_names_are_unique_across_canonical_and_aliases():
 
 
 def test_canonical_names_use_verb_object_vocabulary():
-    allowed_verbs = {"get", "list", "lookup", "normalize", "query", "add", "optimize"}
+    allowed_verbs = {"get", "list", "lookup", "normalize", "query", "add", "optimize", "find"}
     for spec in REGISTRY:
         verb = spec.name.split("_", 1)[0]
         assert verb in allowed_verbs, f"{spec.name} does not start with a canonical verb"
