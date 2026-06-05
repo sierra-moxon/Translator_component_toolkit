@@ -50,6 +50,7 @@ Issues = "https://github.com/NCATSTranslator/Translator_component_toolkit/issues
 [project.scripts]
 mcp-translator = "translator_component_toolkit.__main__:main"
 tct-server = "main:main"
+tct = "translator_component_toolkit.cli:main"
 
 [build-system]
 requires = ["hatchling"]

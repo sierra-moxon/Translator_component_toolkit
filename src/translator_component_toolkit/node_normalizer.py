@@ -3,11 +3,15 @@ This is a wrapper around the Node Normalizer API.
 
 API docs: https://nodenorm.transltr.io/docs
 """
+import logging
 import urllib.parse
 
 import requests
 
+from . import config
 from .translator_node import TranslatorNode
+
+logger = logging.getLogger(__name__)
 
 
 URL = 'https://nodenorm.ci.transltr.io/'
@@ -16,7 +20,7 @@ def status():
     """
     Returns the status of the Node Normalizer API.
     """
-    response = requests.get(f'{URL}status')
+    response = requests.get(f'{URL}status', timeout=config.http_timeout())
     response.raise_for_status()
     return response.json()
 
@@ -58,9 +62,11 @@ def get_normalized_nodes(query: str | list[str],
             json_query = [query]
         else:
             json_query = query
-        response = requests.post(path, json={'curies': json_query, **kwargs})
+        if len(json_query) == 0:
+            return {}
+        response = requests.post(path, json={'curies': json_query, **kwargs}, timeout=config.http_timeout())
     else:
-        response = requests.get(path, params={'curie': query, **kwargs})
+        response = requests.get(path, params={'curie': query, **kwargs}, timeout=config.http_timeout())
     if response.status_code == 200:
         result = response.json()
         normalized_dict = {}
@@ -125,11 +131,11 @@ def get_preferred_names(id_list:list[str], batch_limit=500, **kwargs) -> dict[st
             else:
                 label = normalized_nodes[curie].label
                 if label is None:
-                    print(curie + ": no preferred name")
+                    logger.debug("%s: no preferred name", curie)
                     label = curie
                 name_map[curie] = label
     if len(unmapped_ids) > 0:
-        print("NodeNorm does not know about these identifiers: " + ",".join(unmapped_ids))
+        logger.info("NodeNorm does not know about these identifiers: %s", ",".join(unmapped_ids))
     return name_map
 
 
@@ -165,7 +171,7 @@ def ID_convert_to_preferred_name_nodeNormalizer(id_list):
             "description": False,   # Change to True if you want descriptions from any identifiers we know about.
             "conflate": NODENORM_GENE_PROTEIN_CONFLATION,
             "drug_chemical_conflate": NODENORM_DRUG_CHEMICAL_CONFLATION,
-        })
+        }, timeout=config.http_timeout())
         if not response.ok:
             raise RuntimeError("Error: NodeNorm request failed with status code " + str(response.status_code))
 
@@ -181,13 +187,13 @@ def ID_convert_to_preferred_name_nodeNormalizer(id_list):
                 label = identifier.get('label')
                 dic_id_map[curie] = label
                 if not label:
-                    print(curie + ": no preferred name")
+                    logger.debug("%s: no preferred name", curie)
                     dic_id_map[curie] = curie
             else:
                 unrecoglized_ids.append(curie)
 
                 dic_id_map[curie] = curie
     if len(unrecoglized_ids) > 0:
-        print("NodeNorm does not know about these identifiers: " + ",".join(unrecoglized_ids))
+        logger.info("NodeNorm does not know about these identifiers: %s", ",".join(unrecoglized_ids))
 
     return dic_id_map

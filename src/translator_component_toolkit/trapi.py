@@ -9,6 +9,8 @@ import json
 
 import requests
 
+from . import config
+
 # TODO: incorporate object ids into the method.
 def build_query(subject_ids:list[str],
         object_categories:list[str], predicates:list[str],
@@ -121,7 +123,7 @@ def query(url:str, query:dict):
             "Use build_query(...) without return_json=True, "
             "or pass json.loads(query) instead."
         )
-    response = requests.post(url, json=query)
+    response = requests.post(url, json=query, timeout=config.http_timeout())
     if response.status_code == 200:
         # TODO
         result = response.json().get("message", {})

@@ -25,6 +25,7 @@ mcp = FastMCP("translator-toolkit")
 def _register(spec: ToolSpec) -> None:
     """Register one tool (and its aliases) on the MCP server from a ToolSpec."""
     base = make_signed_callable(spec)
+    annotations = spec.annotations.to_mcp()
 
     def wrap(name: str, description: str):
         signed = make_signed_callable(spec)
@@ -40,7 +41,7 @@ def _register(spec: ToolSpec) -> None:
         tool_fn.__doc__ = description
         tool_fn.__signature__ = signed.__signature__  # type: ignore[attr-defined]
         tool_fn.__annotations__ = dict(signed.__annotations__)
-        mcp.tool(name=name, description=description)(tool_fn)
+        mcp.tool(name=name, description=description, annotations=annotations)(tool_fn)
 
     wrap(spec.name, spec.summary)
     for alias in spec.aliases:

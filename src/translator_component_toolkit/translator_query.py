@@ -1,8 +1,12 @@
+import logging
 import requests
 from copy import deepcopy
 import pandas
+from . import config
 from . import translator_metakg
 from . import translator_kpinfo
+
+logger = logging.getLogger(__name__)
 
 
 def get_translator_API_predicates() -> tuple[dict, pandas.DataFrame, dict]:
@@ -25,13 +29,13 @@ def get_translator_API_predicates() -> tuple[dict, pandas.DataFrame, dict]:
     >>> API_names, metaKG, API_predicates = get_translator_API_predicates()
     '''
     Translator_KP_info,APInames= translator_kpinfo.get_translator_kp_info()
-    print(len(Translator_KP_info))
+    logger.debug("Translator KP info count: %s", len(Translator_KP_info))
     # Step 2: Get metaKG and all predicates from Translator APIs through the SmartAPI system
-    metaKG = translator_metakg.get_KP_metadata(APInames) 
-    print(metaKG.shape)
+    metaKG = translator_metakg.get_KP_metadata(APInames)
+    logger.debug("metaKG shape: %s", metaKG.shape)
     # Add metaKG from Plover API based KG resources
     APInames,metaKG = translator_metakg.add_plover_API(APInames, metaKG)
-    print(metaKG.shape)
+    logger.debug("metaKG shape after plover: %s", metaKG.shape)
     # Step 3: list metaKG information
     # All_predicates = list(set(metaKG['Predicate']))  # Unused variable
     # All_categories = list((set(list(set(metaKG['Subject']))+list(set(metaKG['Object'])))))  # Unused variable
@@ -48,6 +52,9 @@ def get_translator_API_predicates() -> tuple[dict, pandas.DataFrame, dict]:
 def build_attribute_constraint(attribute_id, operator, value, name=None, is_not=False):
     """
     This creates an attribute constraint for a TRAPI query dict.
+
+    Example
+    -------
     """
     if name is None:
         name = ''
@@ -168,18 +175,18 @@ def query_KP(API_name_cur, query_json, APInames, API_predicates):
     Query an individual API with a TRAPI 1.5.0 query JSON,
     without modifying the original query_json.
     """
-    API_url_cur = APInames[API_name_cur]
+    API_url_cur = APInames[API_name_cur].strip('/')
     # deep‐copy so we never touch the caller’s data
     query_copy = deepcopy(query_json)
     # optimize on our private copy
     query_json_cur = optimize_query_json(query_copy, API_name_cur, API_predicates)
-    response = requests.post(API_url_cur, json=query_json_cur)
+    response = requests.post(API_url_cur, json=query_json_cur, timeout=config.http_timeout())
     if response.status_code == 200:
         result = response.json().get("message", {})
         kg = result.get("knowledge_graph", {})
         edges = kg.get("edges", {})
         if edges:
-            print(f"{API_name_cur}: Success!")
+            logger.info("%s: Success!", API_name_cur)
             return result
         elif "knowledge_graph" in result:
             return None
